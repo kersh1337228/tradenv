@@ -5,7 +5,7 @@ from django.http import Http404
 
 
 # Parsing quotes names, symbols and etc.
-def parse_quote_names(pages_amount=50):
+def parse_quotes_names(pages_amount=50):
     # Parsing basic data
     url = 'https://finance.yahoo.com/screener/unsaved/3a284f4c-04b6-4f38-b7dc-9ca9dc10e1d6?count=100'
     headers = {

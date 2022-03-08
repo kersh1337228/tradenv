@@ -3,7 +3,7 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, CreateAPIView, ListAPIView
 from rest_framework.response import Response
-from quotes.models import Quote
+from quotes.models import Quotes
 from quotes.utils import paginate, get_all_quotes, quote_name_search
 
 
@@ -11,12 +11,12 @@ class QuotesAPIView(
     RetrieveUpdateDestroyAPIView,
     CreateAPIView
 ):
-    def get(self, request, *args, **kwargs): # detail
+    def get(self, request, *args, **kwargs):  # detail
         if request.is_ajax():
-            quotes = Quote.objects.filter(slug=kwargs.get('slug'))
+            quotes = Quotes.objects.filter(slug=kwargs.get('slug'))
             return Response(
                 data={
-                    'quotes': Quote.add_quote_by_symbol(
+                    'quotes': Quotes.add_quote_by_symbol(
                         request.query_params.get('symbol'),
                         request.query_params.get('name'),
                         kwargs.get('slug'),
@@ -27,7 +27,7 @@ class QuotesAPIView(
             return render(
                 template_name='quotes_detail.html',
                 context={
-                    'quote': Quote.objects.get(
+                    'quote': Quotes.objects.get(
                         slug=kwargs.get('slug')
                     )
                 }, request=request,
@@ -64,7 +64,7 @@ class QuotesListAPIView(
     def get(self, request, *args, **kwargs):
         if request.is_ajax():
             if request.query_params.get('downloaded'):
-                quotes = Quote.objects.filter(
+                quotes = Quotes.objects.filter(
                     Q(symbol__icontains=request.query_params.get('name')) |
                     Q(name__icontains=request.query_params.get('name'))
                 )
@@ -93,10 +93,10 @@ class QuotesListAPIView(
                 quotes_html = ''
                 for quote in quotes:
                     quotes_html += render_to_string(
-                        template_name='quote.html',
+                        template_name='quotes.html',
                         context={
                             'quote': quote,
-                            'downloaded_quotes': [quote.symbol for quote in Quote.objects.all()],
+                            'downloaded_quotes': [quote.symbol for quote in Quotes.objects.all()],
                         },
                         request=request,
                     )
@@ -129,7 +129,7 @@ class QuotesListAPIView(
                         'volume': quote[5],
                         'slug': quote[1].lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
                     } for quote in quotes],
-                    'downloaded_quotes': [quote.symbol for quote in Quote.objects.all()],
+                    'downloaded_quotes': [quote.symbol for quote in Quotes.objects.all()],
                     'pagination': paginate(current_page, 50)
                 }
             )

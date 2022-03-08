@@ -1,11 +1,10 @@
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
-from log.models import Log
 import datetime
 import pandas
 
 
-'''Portfolio class containing shares and balance'''
+# Portfolio class containing stocks and balance
 class Portfolio(models.Model):
     name = models.CharField(
         max_length=255,
@@ -18,13 +17,9 @@ class Portfolio(models.Model):
             MaxValueValidator(100000000.0)
         ]
     )
-    shares = models.ManyToManyField(
-        'Share',
-        related_name='portfolio_shares',
-    )
-    logs = models.ManyToManyField(
-        Log,
-        related_name='portfolio_logs'
+    stocks = models.ManyToManyField(
+        'Stock',
+        related_name='portfolio_stocks',
     )
     created = models.DateTimeField(
         auto_now_add=True
@@ -44,15 +39,14 @@ class Portfolio(models.Model):
     def get_quotes_dates(self):
         return pandas.date_range(
             max([datetime.datetime.strptime(
-                list(share.origin.quotes.keys())[0],
+                list(stock.origin.quotes.keys())[0],
                 '%Y-%m-%d'
-            ) for share in self.shares.all()]),
+            ) for stock in self.stocks.all()]),
             min([datetime.datetime.strptime(
-                list(share.origin.quotes.keys())[-1],
+                list(stock.origin.quotes.keys())[-1],
                 '%Y-%m-%d'
-            ) for share in self.shares.all()])
+            ) for stock in self.stocks.all()])
         ).strftime('%Y-%m-%d').tolist()
-
 
     def __str__(self):
         return self.name

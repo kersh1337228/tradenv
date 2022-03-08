@@ -1,15 +1,13 @@
 import requests
-from django.core.files import File
 from django.db import models
-import os
 import datetime
 import pandas
 
 
-'''Economic market instrument, representing shares,
+'''Economic market instrument, representing stocks,
  obligations, currencies, etc. 
  Contains symbol, main quotes for certain period, price plot.'''
-class Quote(models.Model):
+class Quotes(models.Model):
     symbol = models.CharField(
         max_length=255,
         unique=True,
@@ -23,9 +21,6 @@ class Quote(models.Model):
         null=False
     )
     quotes = models.JSONField()
-    price_plot = models.ImageField(
-        upload_to='plots'
-    )
     slug = models.SlugField(
         max_length=255,
         unique=True,
@@ -46,7 +41,7 @@ class Quote(models.Model):
         symbol={symbol}&
         outputsize=full&
         datatype=json&
-        apikey={Quote.api_key}''').json()
+        apikey={Quotes.api_key}''').json()
         data = data[list(data.keys())[-1]]
         quotes = last = {}  # Formatting quotes
         for date in pandas.date_range(
@@ -68,7 +63,7 @@ class Quote(models.Model):
                 last['non-trading'] = True
             quotes[key] = last
         # Adding quotes data to the database
-        quote = Quote.objects.create(
+        quote = Quotes.objects.create(
             symbol=symbol,
             name=name,
             quotes=quotes,
@@ -77,28 +72,17 @@ class Quote(models.Model):
         quote.build_price_plot()
         return quote
 
-    # Building price ohlc plot of the instrument using its quotes
-    def build_price_plot(self):
-        build_candle_plot(self.quotes)
-        self.price_plot.save(
-            f'{self.slug}_price_plot.png',
-            File(open('ui/business_logic/plot.png', 'rb'))
-        )  # Attaching plot image
-        # Deleting unnecessary plot picture
-        os.remove(f'ui/business_logic/plot.png')
-        self.save()
-
     def __str__(self):
         return self.name
 
 
-'''Share model used to create portfolios'''
-class Share(models.Model):
+# Stock model used for create portfolios
+class Stock(models.Model):
     # Link to the original instrument model
     origin = models.ForeignKey(
-        Quote,
+        Quotes,
         on_delete=models.CASCADE,
-        related_name='share_origin'
+        related_name='stock_origin'
     )
-    # Amount of quotes in the portfolio
+    # Current amount of stocks in the portfolio
     amount = models.IntegerField()

@@ -21,10 +21,7 @@ class Log(models.Model):
     balance_plot = models.ImageField(
         upload_to='plots/%Y/%m/%d/%H/%M/%S'
     )
-    share_plots =models.ManyToManyField(
-        'Image',
-        related_name='log_share_plots',
-    )
+    stocks_quotes = models.JSONField()
     slug = models.SlugField(
         max_length=255,
         unique=True,
@@ -37,7 +34,7 @@ class Log(models.Model):
         super(Log, self).save(**kwargs)
 
 
-'''Image class to attach multiple images to one model'''
+# Image class to attach multiple images to one model
 class Image(models.Model):
     image = models.ImageField(
         upload_to='plots/%Y/%m/%d/%H/%M/%S'

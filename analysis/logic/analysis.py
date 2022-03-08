@@ -11,37 +11,37 @@ from django.core.files import File
 from log.models import Log, Image
 
 
-'''Copies the portfolio and share to allow the analyser
+'''Copies the portfolio and stocks to allow the analyser
  function to change the data of the class 
  instance but not of the database'''
 class PortfolioImage:
-    class ShareImage:
-        def __init__(self, share):
-            self.origin = share.origin
+    class StockImage:
+        def __init__(self, stock):
+            self.origin = stock.origin
             self.amount = 0
 
     def __init__(self, portfolio):
         self.balance = portfolio.balance
-        self.shares = [
-            self.ShareImage(share) for share in portfolio.shares.all()
+        self.stocks = [
+            self.StockImage(stock) for stock in portfolio.stocks.all()
         ]
         self.cost = self.balance
 
-    # Balance in currency + shares price
+    # Balance in currency + stocks price
     # according to its close price by the date
     def set_cost(self, date):
         cost = self.balance
-        for share in self.shares:
-            cost += share.amount * share.origin.quotes[date]['close']
+        for stocks in self.stocks:
+            cost += stocks.amount * stocks.origin.quotes[date]['close']
         self.cost = cost
 
     def __str__(self):
         return str({
             'balance': self.balance,
-            'shares': [{
-                'amount': share.amount,
-                'name': share.origin.name
-            } for share in self.shares],
+            'stocks': [{
+                'amount': stock.amount,
+                'name': stock.origin.name
+            } for stock in self.stocks],
             'cost': self.cost
         })
 
@@ -72,16 +72,16 @@ def analyse(portfolio, time_interval_start, time_interval_end, strategy):
                 'percent': round(logs[-1].cost / logs[0].cost - 1, 2) * 100,
                 'currency': round(logs[-1].cost - logs[0].cost, 2)
             },
-            'shares': [
+            'stocks': [
                 {
-                    'percent': round(share.origin.quotes[time_interval_end]['close'] /
-                                share.origin.quotes[time_interval_start]['close'] - 1, 2) * 100,
+                    'percent': round(stock.origin.quotes[time_interval_end]['close'] /
+                                stock.origin.quotes[time_interval_start]['close'] - 1, 2) * 100,
                     'currency': round(
-                        share.origin.quotes[time_interval_end]['close'] -
-                        share.origin.quotes[time_interval_start]['close'], 2
+                        stock.origin.quotes[time_interval_end]['close'] -
+                        stock.origin.quotes[time_interval_start]['close'], 2
                     )
                 }
-                for share in portfolio.shares.all()]
+                for stock in portfolio.stocks.all()]
         },
         strategy=strategy,
         portfolio=portfolio,
@@ -97,16 +97,16 @@ def analyse(portfolio, time_interval_start, time_interval_end, strategy):
     )  # Attaching balance change plot to log model instance
     # Deleting unnecessary plot picture
     os.remove('ui/business_logic/balance.png')
-    # Building share price ohlc candle plot
-    for share in portfolio.shares.all():
+    # Building stock price ohlc candle plot
+    for stock in portfolio.stocks.all():
         build_candle_plot(
-            {date: share.origin.quotes[date] for date in date_range},
-            f'{share.origin.name}.png'
-        )  # Attaching share price plot to log model instance
+            {date: stock.origin.quotes[date] for date in date_range},
+            f'{stock.origin.name}.png'
+        )  # Attaching stock price plot to log model instance
         image = Image.objects.create()
-        image.attach_image(f'{share.origin.name}.png')
-        log_instance.share_plots.add(image)
-        os.remove(f'ui/business_logic/{share.origin.name}.png')
+        image.attach_image(f'{stock.origin.name}.png')
+        log_instance.stock_plots.add(image)
+        os.remove(f'ui/business_logic/{stock.origin.name}.png')
     log_instance.save()  # Applying log model instance changes
     portfolio.logs.add(log_instance)  # Attaching log to the portfolio
     portfolio.save()
@@ -120,37 +120,37 @@ def log(portfolio_image, date_range, strategy):
     # not being afraid to change logged data
     logs = [deepcopy(portfolio_image)]
     for date in date_range:
-        for index in range(len(portfolio_image.shares)):
+        for index in range(len(portfolio_image.stocks)):
             portfolio_image = strategy.buy_or_sell(portfolio_image, index, date)
         logs.append(deepcopy(portfolio_image))
     return logs
 
 
 '''Building the plot, showing the total savings amount and
-shares average_cost, depending on the time point'''
+stocks average_cost, depending on the time point'''
 def plot_builder(portfolio, date_range, logs):
     # x-axis data (dates)
     dates_data = mdates.date2num(date_range.insert(
             0, date_range[0] - datetime.timedelta(days=1)
     ).to_pydatetime())
-    # Creating balance and shares amount figures and subplots
+    # Creating balance and stocks amount figures and subplots
     fig = plt.figure()
     gridspec = grd.GridSpec(
         nrows=2, ncols=1, height_ratios=[3, 1], hspace=0
     )  # Building subplot grid
     balance_subplot = plt.subplot(gridspec[0])  # Balance subplot
-    shares_amount_subplot = plt.subplot(gridspec[1])  # Shares amount subplot
+    stocks_amount_subplot = plt.subplot(gridspec[1])  # Stocks amount subplot
     # Setting x-axis date format
-    shares_amount_subplot.xaxis.set_major_formatter(
+    stocks_amount_subplot.xaxis.set_major_formatter(
         mdates.DateFormatter('%Y-%m-%d')
     )
-    shares_amount_subplot.xaxis.set_major_locator(
+    stocks_amount_subplot.xaxis.set_major_locator(
         mdates.DayLocator(interval=((date_range[-1] - date_range[0]).days // 6))
     )
-    shares_amount_subplot.xaxis.set_minor_locator(
+    stocks_amount_subplot.xaxis.set_minor_locator(
         mdates.DayLocator()
     )
-    for label in shares_amount_subplot.get_xticklabels(which='major'):
+    for label in stocks_amount_subplot.get_xticklabels(which='major'):
         label.set(rotation=45, horizontalalignment='right')
     # Getting subplot lines
     balance_line = balance_subplot.plot(
@@ -159,17 +159,17 @@ def plot_builder(portfolio, date_range, logs):
         label='Balance',
         color='r'
     )
-    shares_lines = [shares_amount_subplot.plot(
+    stocks_lines = [stocks_amount_subplot.plot(
         dates_data,
-        numpy.array([log.shares[index].amount for log in logs]),
-        label=f'{portfolio.shares.all()[index].origin.name}'
-    )[0] for index, share in enumerate(portfolio.shares.all())]
+        numpy.array([log.stocks[index].amount for log in logs]),
+        label=f'{portfolio.stocks.all()[index].origin.name}'
+    )[0] for index, stock in enumerate(portfolio.stocks.all())]
     # Setting vertical axes labels
     balance_subplot.set_ylabel('Balance')
-    shares_amount_subplot.set_ylabel('Amount')
+    stocks_amount_subplot.set_ylabel('Amount')
     # Setting up legend
     leg = fig.legend(
-        handles=shares_lines,
+        handles=stocks_lines,
         loc='upper right',
         facecolor='#161a1e',
         edgecolor='#161a1e',
@@ -179,34 +179,34 @@ def plot_builder(portfolio, date_range, logs):
         text.set_color('#838d9b')
     # Deleting unnecessary borders
     balance_subplot.label_outer()
-    shares_amount_subplot.label_outer()
+    stocks_amount_subplot.label_outer()
     # Figure color
     fig.set_facecolor('#161a1e')
     # Subplots foreground color
     balance_subplot.set_facecolor('#161a1e')
-    shares_amount_subplot.set_facecolor('#161a1e')
+    stocks_amount_subplot.set_facecolor('#161a1e')
     # Subplots grid color
     balance_subplot.grid(color='#1a1e23')
-    shares_amount_subplot.grid(color='#1a1e23')
+    stocks_amount_subplot.grid(color='#1a1e23')
     # Subplots border colors
     balance_subplot.spines['bottom'].set_color('#838d9b')
     balance_subplot.spines['top'].set_color('#838d9b')
     balance_subplot.spines['left'].set_color('#838d9b')
     balance_subplot.spines['right'].set_color('#838d9b')
-    shares_amount_subplot.spines['bottom'].set_color('#838d9b')
-    shares_amount_subplot.spines['top'].set_color('#838d9b')
-    shares_amount_subplot.spines['left'].set_color('#838d9b')
-    shares_amount_subplot.spines['right'].set_color('#838d9b')
+    stocks_amount_subplot.spines['bottom'].set_color('#838d9b')
+    stocks_amount_subplot.spines['top'].set_color('#838d9b')
+    stocks_amount_subplot.spines['left'].set_color('#838d9b')
+    stocks_amount_subplot.spines['right'].set_color('#838d9b')
     # Subplots axe tick colors
     balance_subplot.tick_params(axis='x', colors='#838d9b')
     balance_subplot.tick_params(axis='y', colors='#838d9b')
-    shares_amount_subplot.tick_params(axis='x', colors='#838d9b')
-    shares_amount_subplot.tick_params(axis='y', colors='#838d9b')
+    stocks_amount_subplot.tick_params(axis='x', colors='#838d9b')
+    stocks_amount_subplot.tick_params(axis='y', colors='#838d9b')
     # Subplots label colors
     balance_subplot.xaxis.label.set_color('#838d9b')
     balance_subplot.yaxis.label.set_color('#838d9b')
-    shares_amount_subplot.xaxis.label.set_color('#838d9b')
-    shares_amount_subplot.yaxis.label.set_color('#838d9b')
+    stocks_amount_subplot.xaxis.label.set_color('#838d9b')
+    stocks_amount_subplot.yaxis.label.set_color('#838d9b')
     # Increasing bottom space below the plots
     plt.subplots_adjust(bottom=0.2)
     plt.savefig('ui/business_logic/balance.png', dpi=1200)

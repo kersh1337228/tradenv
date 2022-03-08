@@ -4,7 +4,7 @@ from django.shortcuts import render
 from rest_framework.generics import CreateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView
 from rest_framework.response import Response
 from portfolio.models import Portfolio
-from quotes.models import Share, Quote
+from quotes.models import Stock, Quotes
 
 
 class PortfolioAPIView(
@@ -65,29 +65,29 @@ class PortfolioAPIView(
         else:
             pass
 
-    def put(self, request, *args, **kwargs):  # manage shares
+    def put(self, request, *args, **kwargs):  # manage stocks
         if request.is_ajax():
-            # Add, change amount of or delete shares
+            # Add, change amount of or delete stocks
             portfolio = Portfolio.objects.get(
                 slug=request.data.get('slug'),
             )
             if request.data.get('type') == 'add':
-                share = Share.objects.create(
+                stock = Stock.objects.create(
                     origin=Quote.objects.get(
                         symbol=request.data.get('symbol')
                     ),
                     amount=1,
                 )
-                portfolio.shares.add(share)
+                portfolio.stocks.add(stock)
                 return Response(
-                    data={'share': {
-                        'symbol': share.origin.symbol,
-                        'name': share.origin.name
+                    data={'stock': {
+                        'symbol': stock.origin.symbol,
+                        'name': stock.origin.name
                     }},
                     status=200
                 )
             elif request.data.get('type') == 'change_amount':
-                portfolio.shares.filter(
+                portfolio.stocks.filter(
                     origin=Quote.objects.get(
                         symbol=request.data.get('symbol')
                     )
@@ -97,7 +97,7 @@ class PortfolioAPIView(
                 portfolio.last_updated=datetime.datetime.now()
                 portfolio.save()
             elif request.data.get('type') == 'delete':
-                portfolio.shares.get(
+                portfolio.stocks.get(
                     origin=Quote.objects.get(
                         symbol=request.data.get('symbol')
                     ),

@@ -21,10 +21,10 @@ class AnalysisAPIView(
                 portfolio = Portfolio.objects.get(
                     slug=request.query_params.get('slug')
                 )
-                if not len(portfolio.shares.all()):
+                if not len(portfolio.stocks.all()):
                     return Response(
                         data={
-                            'error_message': 'No shares in the portfolio'
+                            'error_message': 'No stocks in the portfolio'
                         },
                         status=400,
                     )
