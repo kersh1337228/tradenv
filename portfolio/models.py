@@ -18,7 +18,7 @@ class Portfolio(models.Model):
         ]
     )
     stocks = models.ManyToManyField(
-        'Stock',
+        'quotes.Stock',
         related_name='portfolio_stocks',
     )
     created = models.DateTimeField(

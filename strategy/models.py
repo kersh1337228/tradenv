@@ -1,5 +1,6 @@
 from django.db import models
 from log.models import Log
+from strategy.utils import simple_buy_or_sell
 
 
 '''Strategy model, where strategy is basically what to do 
@@ -20,7 +21,7 @@ class Strategy(models.Model):
     short_limit = models.SmallIntegerField(
         verbose_name='Shares amount limit to borrow'
     )
-    buy_or_sell = None
+    buy_or_sell = simple_buy_or_sell
     slug = models.SlugField(
         max_length=255,
         unique=True,
@@ -53,6 +54,6 @@ class Strategy(models.Model):
     def save(self, **kwargs):
         if not self.slug or self.slug != self.name.replace(' ', '_').lower():
             self.slug = self.name.replace(' ', '_').lower()
-        if not self.buy_or_sell:
-            self.buy_or_sell = kwargs.get('buy_or_sell')
+        self.buy_or_sell = kwargs.get('buy_or_sell') \
+            if kwargs.get('buy_or_sell') else self.buy_or_sell
         super(Strategy, self).save()

@@ -7,6 +7,8 @@ import pandas
 '''Economic market instrument, representing stocks,
  obligations, currencies, etc. 
  Contains symbol, main quotes for certain period, price plot.'''
+
+
 class Quotes(models.Model):
     symbol = models.CharField(
         max_length=255,
@@ -30,6 +32,20 @@ class Quotes(models.Model):
 
     # API key for alpha_vantage api
     api_key = 'J7JRRVLFS9HZFPBY'
+
+    # Returns quotes only for certain period
+    def get_quotes_for_period(self, period_start, period_end):
+        date_range = pandas.date_range(
+            datetime.datetime.strptime(
+                period_start,
+                '%Y-%m-%d'
+            ),
+            datetime.datetime.strptime(
+                period_end,
+                '%Y-%m-%d'
+            ),
+        )
+        return {date: quotes for date, quotes in enumerate(self.quotes) if date in date_range}
 
     # Method to parse quotes of the instrument by its symbol
     # and then create a database note and model instance
@@ -69,7 +85,6 @@ class Quotes(models.Model):
             quotes=quotes,
             slug=slug
         )  # Building ohlc quotes plot
-        quote.build_price_plot()
         return quote
 
     def __str__(self):
@@ -83,6 +98,5 @@ class Stock(models.Model):
         Quotes,
         on_delete=models.CASCADE,
         related_name='stock_origin'
-    )
-    # Current amount of stocks in the portfolio
+    )  # Current amount of stocks in the portfolio
     amount = models.IntegerField()

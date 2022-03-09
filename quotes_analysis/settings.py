@@ -41,6 +41,11 @@ INSTALLED_APPS = [
     # Framework apps
     'rest_framework',
     # Project apps
+    'analysis.apps.AnalysisConfig',
+    'quotes.apps.QuotesConfig',
+    'portfolio.apps.PortfolioConfig',
+    'strategy.apps.StrategyConfig',
+    'log.apps.LogConfig',
 ]
 
 MIDDLEWARE = [

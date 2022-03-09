@@ -7,7 +7,7 @@ from django.http import Http404
 # Parsing quotes names, symbols and etc.
 def parse_quotes_names(pages_amount=50):
     # Parsing basic data
-    url = 'https://finance.yahoo.com/screener/unsaved/3a284f4c-04b6-4f38-b7dc-9ca9dc10e1d6?count=100'
+    url = 'https://finance.yahoo.com/screener/unsaved/f672a43b-fff2-4b5d-b146-c1b62f8ad65d?dependentField=sector&dependentValues=&count=100'
     headers = {
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'accept-encoding': 'gzip, deflate, br',
@@ -33,7 +33,7 @@ def parse_quotes_names(pages_amount=50):
     else:
         raise Http404('Parsing error')
     # Creating quotes names database
-    with sqlite3.connect('names.sqlite3') as connection:
+    with sqlite3.connect('quotes/names.sqlite3') as connection:
         cursor = connection.cursor()
         cursor.execute('''DROP TABLE IF EXISTS names''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS names (
@@ -60,31 +60,47 @@ def parse_quotes_names(pages_amount=50):
 
 # Return quotes of instruments with matching name or symbol
 def quote_name_search(keyword):
-    with sqlite3.connect('ui/business_logic/names.sqlite3') as connection:
+    with sqlite3.connect('quotes/names.sqlite3') as connection:
         cursor = connection.cursor()
         cursor.execute(f'''
             SELECT * FROM names WHERE name LIKE "{keyword}%" OR symbol LIKE "{keyword}%"
         ''')
-        result = cursor.fetchall()
+        quotes = [{
+            'symbol': result[0],
+            'name': result[1],
+            'price': result[2],
+            'change': result[3],
+            'change_percent': result[4],
+            'volume': result[5],
+            'slug': result[1].lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
+        } for result in cursor.fetchall()]
         cursor.close()
-        return result
+        return quotes
 
 
 # Returns all quotes parsed
 def get_all_quotes(page:int, limit:int):
-    with sqlite3.connect('ui/business_logic/names.sqlite3') as connection:
+    with sqlite3.connect('quotes/names.sqlite3') as connection:
         cursor = connection.cursor()
         cursor.execute(
             f'''SELECT * FROM names LIMIT {limit} OFFSET {page * limit}'''
         )
-        result = cursor.fetchall()
+        quotes = [{
+            'symbol': result[0],
+            'name': result[1],
+            'price': result[2],
+            'change': result[3],
+            'change_percent': result[4],
+            'volume': result[5],
+            'slug': result[1].lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
+        } for result in cursor.fetchall()]
         cursor.close()
-        return result
+        return quotes
 
 
 # Paginate quotes list pages
 def paginate(current_page, limit):
-    with sqlite3.connect('ui/business_logic/names.sqlite3') as connection:
+    with sqlite3.connect('quotes/names.sqlite3') as connection:
         cursor = connection.cursor()
         cursor.execute(
             f'''SELECT * FROM names'''

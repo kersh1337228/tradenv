@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as grd
 import matplotlib.dates as mdates
 import mplfinance
-from django.core.files import File
-from log.models import Log, Image
+from log.models import Log
 
 
 '''Copies the portfolio and stocks to allow the analyser
@@ -85,29 +84,15 @@ def analyse(portfolio, time_interval_start, time_interval_end, strategy):
         },
         strategy=strategy,
         portfolio=portfolio,
+        stocks={
+            stock.origin.symbol : {
+            'name': stock.origin.name,
+            'quotes': stock.origin.quotes.get_quotes_for_period(
+                time_interval_start,
+                time_interval_end
+            )
+        } for stock in portfolio.stocks.all()}
     )  # Creating log model instance to save analysis data
-    plot_builder(
-        portfolio,
-        date_range,
-        logs,
-    )  # Building balance change plot
-    log_instance.balance_plot.save(
-        'balance.png',
-        File(open('ui/business_logic/balance.png', 'rb'))
-    )  # Attaching balance change plot to log model instance
-    # Deleting unnecessary plot picture
-    os.remove('ui/business_logic/balance.png')
-    # Building stock price ohlc candle plot
-    for stock in portfolio.stocks.all():
-        build_candle_plot(
-            {date: stock.origin.quotes[date] for date in date_range},
-            f'{stock.origin.name}.png'
-        )  # Attaching stock price plot to log model instance
-        image = Image.objects.create()
-        image.attach_image(f'{stock.origin.name}.png')
-        log_instance.stock_plots.add(image)
-        os.remove(f'ui/business_logic/{stock.origin.name}.png')
-    log_instance.save()  # Applying log model instance changes
     portfolio.logs.add(log_instance)  # Attaching log to the portfolio
     portfolio.save()
     return log_instance

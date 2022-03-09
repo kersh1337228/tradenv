@@ -11,17 +11,14 @@ class Log(models.Model):
     time_interval_end = models.DateField()
     price_deltas = models.JSONField()
     strategy = models.ForeignKey(
-        'Strategy',
+        'strategy.Strategy',
         on_delete=models.CASCADE
     )
     portfolio = models.ForeignKey(
-        'quotes.Portfolio',
+        'portfolio.Portfolio',
         on_delete=models.CASCADE
     )
-    balance_plot = models.ImageField(
-        upload_to='plots/%Y/%m/%d/%H/%M/%S'
-    )
-    stocks_quotes = models.JSONField()
+    stocks = models.JSONField()
     slug = models.SlugField(
         max_length=255,
         unique=True,

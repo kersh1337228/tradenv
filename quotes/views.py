@@ -1,16 +1,13 @@
 from django.db.models import Q
 from django.shortcuts import render
 from django.template.loader import render_to_string
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, CreateAPIView, ListAPIView
+from rest_framework.generics import RetrieveUpdateDestroyAPIView, CreateAPIView, ListAPIView, UpdateAPIView
 from rest_framework.response import Response
 from quotes.models import Quotes
-from quotes.utils import paginate, get_all_quotes, quote_name_search
+from quotes.utils import paginate, get_all_quotes, quote_name_search, parse_quotes_names
 
 
-class QuotesAPIView(
-    RetrieveUpdateDestroyAPIView,
-    CreateAPIView
-):
+class QuotesAPIView(RetrieveUpdateDestroyAPIView, CreateAPIView):
     def get(self, request, *args, **kwargs):  # detail
         if request.is_ajax():
             quotes = Quotes.objects.filter(slug=kwargs.get('slug'))
@@ -33,18 +30,6 @@ class QuotesAPIView(
                 }, request=request,
             )
 
-    def post(self, request, *args, **kwargs):
-        if request.is_ajax():
-            pass
-        else:
-            pass
-
-    def patch(self, request, *args, **kwargs):
-        if request.is_ajax():
-            pass
-        else:
-            pass
-
     def put(self, request, *args, **kwargs):
         if request.is_ajax():
             pass
@@ -58,10 +43,8 @@ class QuotesAPIView(
             pass
 
 
-class QuotesListAPIView(
-    ListAPIView
-):
-    def get(self, request, *args, **kwargs):
+class QuotesListAPIView(ListAPIView, UpdateAPIView):
+    def get(self, request, *args, **kwargs):  # list
         if request.is_ajax():
             if request.query_params.get('downloaded'):
                 quotes = Quotes.objects.filter(
@@ -77,19 +60,9 @@ class QuotesListAPIView(
                     status=200
                 )
             else:
-                results = quote_name_search(
-                     request.query_params.get('search')
-                ) if request.query_params.get('search') else \
+                quotes = quote_name_search(request.query_params.get('search')) \
+                    if request.query_params.get('search') else \
                     get_all_quotes(int(request.query_params.get('page', 1)) - 1, 50)
-                quotes = [{
-                    'symbol': result[0],
-                    'name': result[1],
-                    'price': result[2],
-                    'change': result[3],
-                    'change_percent': result[4],
-                    'volume': result[5],
-                    'slug': result[1].lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
-                } for result in results]
                 quotes_html = ''
                 for quote in quotes:
                     quotes_html += render_to_string(
@@ -107,8 +80,7 @@ class QuotesListAPIView(
                             template_name='pagination.html',
                             context={
                                 'pagination': paginate(int(request.query_params.get('page', 1)), 50)
-                            },
-                            request=request
+                            }, request=request
                         ) if not request.query_params.get('search') else None
 
                     },
@@ -120,16 +92,16 @@ class QuotesListAPIView(
             return render(
                 request=request,
                 template_name='quotes_list.html',
-                context={'quotes': [{
-                        'symbol': quote[0],
-                        'name': quote[1],
-                        'price': quote[2],
-                        'change': quote[3],
-                        'change_percent': quote[4],
-                        'volume': quote[5],
-                        'slug': quote[1].lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
-                    } for quote in quotes],
+                context={
+                    'quotes': quotes,
                     'downloaded_quotes': [quote.symbol for quote in Quotes.objects.all()],
                     'pagination': paginate(current_page, 50)
                 }
             )
+
+    async def put(self, request, *args, **kwargs):  # Refresh the quotes data
+        if request.is_ajax():
+            await parse_quotes_names()
+            return self.get(request)
+        else:
+            pass

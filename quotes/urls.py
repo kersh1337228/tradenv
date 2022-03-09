@@ -14,7 +14,7 @@ urlpatterns = [
         name='quotes_list_search'
     ),
     path(
-        'list/filter/',
+        'list/sort/',
         QuotesListAPIView.as_view(),
         name='quotes_list_filter'
     ),
