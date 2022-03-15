@@ -112,10 +112,15 @@ def paginate(current_page, limit):
         if current_page <= 0 or current_page > pages_amount:
             raise Http404
         else:
-            return {'page_numbers': list(
-                range(1, pages_amount + 1)
-            )[(current_page - 5 if current_page - 5 >= 0 else 0):(current_page + 4)],
-                    'no_further': current_page == pages_amount,
-                    'no_back': current_page == 1,
-                    'current_page': current_page
-                    }
+            return {
+                'page_numbers': list(
+                    range(1, pages_amount + 1)
+                )[(current_page - 5 if current_page - 5 >= 0 else 0):(current_page + 4)],
+                'no_further': current_page == pages_amount,
+                'no_back': current_page == 1,
+                'current_page': current_page
+            }
+
+#
+# if __name__ == '__main__':
+#     parse_quotes_names(5)

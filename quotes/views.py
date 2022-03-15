@@ -1,28 +1,31 @@
 from django.db.models import Q
+from django.forms import model_to_dict
 from django.shortcuts import render
-from django.template.loader import render_to_string
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, CreateAPIView, ListAPIView, UpdateAPIView
+from rest_framework import generics
 from rest_framework.response import Response
 from quotes.models import Quotes
 from quotes.utils import paginate, get_all_quotes, quote_name_search, parse_quotes_names
 
 
-class QuotesAPIView(RetrieveUpdateDestroyAPIView, CreateAPIView):
+class QuotesAPIView(
+    generics.RetrieveUpdateDestroyAPIView,
+    generics.CreateAPIView
+):
     def get(self, request, *args, **kwargs):  # detail
         if request.is_ajax():
             quotes = Quotes.objects.filter(slug=kwargs.get('slug'))
             return Response(
                 data={
-                    'quotes': Quotes.add_quote_by_symbol(
+                    'quotes': model_to_dict(Quotes.add_quote_by_symbol(
                         request.query_params.get('symbol'),
                         request.query_params.get('name'),
                         kwargs.get('slug'),
-                    ) if not quotes else quotes.last()
+                    )) if not quotes else model_to_dict(quotes.last())
                 }, status=201
             )
         else:
             return render(
-                template_name='quotes_detail.html',
+                template_name='index.html',
                 context={
                     'quote': Quotes.objects.get(
                         slug=kwargs.get('slug')
@@ -43,7 +46,10 @@ class QuotesAPIView(RetrieveUpdateDestroyAPIView, CreateAPIView):
             pass
 
 
-class QuotesListAPIView(ListAPIView, UpdateAPIView):
+class QuotesListAPIView(
+    generics.ListAPIView,
+    generics.UpdateAPIView
+):
     def get(self, request, *args, **kwargs):  # list
         if request.is_ajax():
             if request.query_params.get('downloaded'):
@@ -60,43 +66,30 @@ class QuotesListAPIView(ListAPIView, UpdateAPIView):
                     status=200
                 )
             else:
-                quotes = quote_name_search(request.query_params.get('search')) \
-                    if request.query_params.get('search') else \
-                    get_all_quotes(int(request.query_params.get('page', 1)) - 1, 50)
-                quotes_html = ''
-                for quote in quotes:
-                    quotes_html += render_to_string(
-                        template_name='quotes.html',
-                        context={
-                            'quote': quote,
-                            'downloaded_quotes': [quote.symbol for quote in Quotes.objects.all()],
-                        },
-                        request=request,
-                    )
+                # quotes_html = ''
+                # for quote in quotes:
+                #     quotes_html += render_to_string(
+                #         template_name='quotes.html',
+                #         context={
+                #             'quote': quote,
+                #             'downloaded_quotes': [quote.symbol for quote in Quotes.objects.all()],
+                #         },
+                #         request=request,
+                #     )
                 return Response(
                     data={
-                        'quotes_html': quotes_html,
-                        'pagination_html': render_to_string(
-                            template_name='pagination.html',
-                            context={
-                                'pagination': paginate(int(request.query_params.get('page', 1)), 50)
-                            }, request=request
-                        ) if not request.query_params.get('search') else None
-
+                        'quotes': quote_name_search(request.query_params.get('search'))
+                            if request.query_params.get('search') else
+                            get_all_quotes(int(request.query_params.get('page', 1)) - 1, 50),
+                        'pagination': paginate(int(request.query_params.get('page', 1)), 50)
+                        if not request.query_params.get('search') else None,
                     },
                     status=200
                 )
         else:
-            current_page = int(request.query_params.get('page', 1))
-            quotes = get_all_quotes(current_page - 1, 50)
             return render(
                 request=request,
-                template_name='quotes_list.html',
-                context={
-                    'quotes': quotes,
-                    'downloaded_quotes': [quote.symbol for quote in Quotes.objects.all()],
-                    'pagination': paginate(current_page, 50)
-                }
+                template_name='index.html',
             )
 
     async def put(self, request, *args, **kwargs):  # Refresh the quotes data

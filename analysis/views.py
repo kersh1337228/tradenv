@@ -1,6 +1,6 @@
 from django.forms import model_to_dict
 from django.shortcuts import render, redirect
-from rest_framework.generics import CreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.reverse import reverse_lazy
 from analysis.logic.analysis import analyse
@@ -9,15 +9,26 @@ from strategy.models import Strategy
 
 
 class AnalysisAPIView(
-    CreateAPIView,
-    RetrieveUpdateDestroyAPIView
+    generics.CreateAPIView,
+    generics.RetrieveUpdateDestroyAPIView
 ):
     # Analysis page get request, returns the form fields
     # step by step, depending on the previous choices
     def get(self, request, *args, **kwargs):
         if request.is_ajax():
+            # Initial request
+            if request.query_params.get('step') == 'initial':
+                return Response(
+                    data={
+                        'portfolios': Portfolio.objects.all(),
+                        'strategies': [
+                            model_to_dict(strategy) for strategy in Strategy.objects.all()
+                        ]
+                    },
+                    status=200,
+                )
             # Choosing the portfolio
-            if request.query_params.get('step') == 'portfolio':
+            elif request.query_params.get('step') == 'portfolio':
                 portfolio = Portfolio.objects.get(
                     slug=request.query_params.get('slug')
                 )
@@ -34,21 +45,11 @@ class AnalysisAPIView(
                     },
                     status=200,
                 )
-            # Choosing the time interval end date
-            elif request.query_params.get('step') == 'strategies':
-                return Response(
-                    data={
-                        'strategies': [
-                            model_to_dict(strategy) for strategy in Strategy.objects.all()
-                        ]
-                    },
-                    status=200,
-                )
         else:
             return render(
-                request, 'analysis.html',
-                {'title': 'Analytics',
-                 'portfolios': Portfolio.objects.all()}
+                template_name='index.html',
+                context={'portfolios': Portfolio.objects.all()},
+                request=request,
             )
 
     # Getting form data and analysing them

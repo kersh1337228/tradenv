@@ -1,15 +1,15 @@
 import datetime
 from django.forms import model_to_dict
 from django.shortcuts import render
-from rest_framework.generics import CreateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView
+from rest_framework import generics
 from rest_framework.response import Response
 from portfolio.models import Portfolio
 from quotes.models import Stock, Quotes
 
 
 class PortfolioAPIView(
-    CreateAPIView,
-    RetrieveUpdateDestroyAPIView
+    generics.CreateAPIView,
+    generics.RetrieveUpdateDestroyAPIView
 ):
     def get(self, request, *args, **kwargs):  # detail
         portfolio = Portfolio.objects.get(
@@ -73,7 +73,7 @@ class PortfolioAPIView(
             )
             if request.data.get('type') == 'add':
                 stock = Stock.objects.create(
-                    origin=Quote.objects.get(
+                    origin=Quotes.objects.get(
                         symbol=request.data.get('symbol')
                     ),
                     amount=1,
@@ -88,7 +88,7 @@ class PortfolioAPIView(
                 )
             elif request.data.get('type') == 'change_amount':
                 portfolio.stocks.filter(
-                    origin=Quote.objects.get(
+                    origin=Quotes.objects.get(
                         symbol=request.data.get('symbol')
                     )
                 ).update(
@@ -98,7 +98,7 @@ class PortfolioAPIView(
                 portfolio.save()
             elif request.data.get('type') == 'delete':
                 portfolio.stocks.get(
-                    origin=Quote.objects.get(
+                    origin=Quotes.objects.get(
                         symbol=request.data.get('symbol')
                     ),
                 ).delete()
@@ -124,7 +124,7 @@ class PortfolioAPIView(
 
 # Shows list of all portfolios
 class PortfolioListAPIView(
-    ListAPIView
+    generics.ListAPIView
 ):
     def get(self, request, *args, **kwargs):  # list
         if request.is_ajax():

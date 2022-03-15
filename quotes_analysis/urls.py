@@ -16,11 +16,15 @@ Including another URLconf
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
-
 from quotes_analysis import settings
 
+
 urlpatterns = [
+    # Default urls
     path('admin/', admin.site.urls),
+    # Frameworks urls
+    path('api/', include('rest_framework.urls')),
+    # Applications urls
     path('analysis/', include('analysis.urls')),
     path('quotes/', include('quotes.urls')),
     path('portfolio/', include('portfolio.urls')),

@@ -1,12 +1,12 @@
 from django.shortcuts import render
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, CreateAPIView, ListAPIView
+from rest_framework import generics
 from log.models import Log
 from strategy.models import Strategy
 
 
 class StrategyAPIView(
-    RetrieveUpdateDestroyAPIView,
-    CreateAPIView
+    generics.RetrieveUpdateDestroyAPIView,
+    generics.CreateAPIView
 ):
     def get(self, request, *args, **kwargs):
         if request.is_ajax():
@@ -50,7 +50,9 @@ class StrategyAPIView(
             pass
 
 
-class StrategyListAPIView(ListAPIView):
+class StrategyListAPIView(
+    generics.ListAPIView
+):
     def get(self, request, *args, **kwargs):
         if request.is_ajax():
             pass

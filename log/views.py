@@ -1,12 +1,14 @@
 from django.shortcuts import render, redirect
-from rest_framework.generics import ListAPIView, RetrieveUpdateDestroyAPIView, get_object_or_404
+from rest_framework import generics
 from rest_framework.response import Response
 
 from log.models import Log
 
 
 # Shows list of all analysis logs
-class LogListAPIView(ListAPIView):
+class LogListAPIView(
+    generics.ListAPIView
+):
     def get(self, request, *args, **kwargs):  # list
         if request.is_ajax():
             pass
@@ -21,7 +23,9 @@ class LogListAPIView(ListAPIView):
 
 
 # Getting log details or deleting the one
-class LogAPIView(RetrieveUpdateDestroyAPIView):
+class LogAPIView(
+    generics.RetrieveUpdateDestroyAPIView
+):
     def get(self, request, *args, **kwargs):  # detail
         if request.is_ajax():
             pass
@@ -29,7 +33,7 @@ class LogAPIView(RetrieveUpdateDestroyAPIView):
             return render(
                 template_name='log_detail.html',
                 context={
-                    'log': get_object_or_404(Log, slug=kwargs.get('slug'))
+                    'log': generics.get_object_or_404(Log, slug=kwargs.get('slug'))
                 },
                 request=request
             )
