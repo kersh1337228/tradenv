@@ -52,12 +52,12 @@ class Quotes(models.Model):
     @staticmethod
     def add_quote_by_symbol(symbol, name, slug, period='DAILY'):
         # Parsing quotes data
-        data = requests.get(f'''https://www.alphavantage.co/query?
-        function=TIME_SERIES_{period}&
-        symbol={symbol}&
-        outputsize=full&
-        datatype=json&
-        apikey={Quotes.api_key}''').json()
+        data = requests.get('https://www.alphavantage.co/query?' +
+                            f'function=TIME_SERIES_{period}&' +
+                            f'symbol={symbol}&' +
+                            'outputsize=full&' +
+                            'datatype=json&' +
+                            f'apikey={Quotes.api_key}').json()
         data = data[list(data.keys())[-1]]
         quotes = last = {}  # Formatting quotes
         for date in pandas.date_range(
@@ -94,7 +94,7 @@ class Quotes(models.Model):
 # Stock model used for create portfolios
 class Stock(models.Model):
     # Link to the original instrument model
-    origin = models.ForeignKey(
+    origin = models.OneToOneField(
         Quotes,
         on_delete=models.CASCADE,
         related_name='stock_origin'

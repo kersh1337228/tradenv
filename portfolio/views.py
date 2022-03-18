@@ -3,7 +3,11 @@ from django.forms import model_to_dict
 from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
+
+from log.models import Log
+from log.serializers import LogSerializer
 from portfolio.models import Portfolio
+from portfolio.serializers import PortfolioSerializer
 from quotes.models import Stock, Quotes
 
 
@@ -17,27 +21,34 @@ class PortfolioAPIView(
         )
         if request.is_ajax():
             return Response(
-                data={'portfolio': model_to_dict(portfolio)},
+                data={
+                    'portfolio': PortfolioSerializer(portfolio).data,
+                    'logs': LogSerializer(
+                        Log.objects.filter(portfolio=portfolio),
+                        many=True,
+                    ).data
+                },
                 status=200
             )
         else:
             return render(
                 request=request,
-                template_name='portfolio_detail.html',
-                context={'portfolio': portfolio}
+                template_name='index.html',
             )
 
     def post(self, request, *args, **kwargs):  # create
         if request.is_ajax():
             data = {key: request.data.get(key) for key in request.data}
-            data.pop('csrfmiddlewaretoken')
-            Portfolio.objects.create(
-                name=data.get('name').strip(),
-                slug=data.get('name').strip().lower().replace(' ', '_'),
-                balance=data.get('balance')
-            )
+            serializer = PortfolioSerializer(data={
+                'name': data.get('name').strip().capitalize(),
+                'slug': data.get('name').strip().lower().replace(' ', '_'),
+                'balance': data.get('balance')
+            })
+            serializer.is_valid(raise_exception=True)
             return Response(
-                data={},
+                data={
+                    'portfolio': serializer.create()
+                },
                 status=200
             )
         else:
@@ -129,13 +140,17 @@ class PortfolioListAPIView(
     def get(self, request, *args, **kwargs):  # list
         if request.is_ajax():
             return Response(
-                data={},
+                data={
+                    'portfolios': PortfolioSerializer(
+                        Portfolio.objects.all(),
+                        many=True
+                    ).data
+                },
                 status=200,
             )
         else:
             pass
         return render(
-            template_name='portfolio_list.html',
-            context={'portfolios': Portfolio.objects.all()},
+            template_name='index.html',
             request=request,
         )

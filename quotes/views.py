@@ -54,8 +54,8 @@ class QuotesListAPIView(
         if request.is_ajax():
             if request.query_params.get('downloaded'):
                 quotes = Quotes.objects.filter(
-                    Q(symbol__icontains=request.query_params.get('name')) |
-                    Q(name__icontains=request.query_params.get('name'))
+                    Q(symbol__istartswith=request.query_params.get('name')) |
+                    Q(name__istartswith=request.query_params.get('name'))
                 )
                 return Response(
                     {'results': [{

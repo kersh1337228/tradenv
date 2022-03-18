@@ -73,6 +73,7 @@ def analyse(portfolio, time_interval_start, time_interval_end, strategy):
             },
             'stocks': [
                 {
+                    'name': stock.origin.name,
                     'percent': round(stock.origin.quotes[time_interval_end]['close'] /
                                 stock.origin.quotes[time_interval_start]['close'] - 1, 2) * 100,
                     'currency': round(

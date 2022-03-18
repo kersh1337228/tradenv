@@ -18,10 +18,10 @@ export default class Pagination extends React.Component {
                 </li>}
                 {this.state.pagination.page_numbers.map(
                     number => number !== this.state.pagination.current_page ?
-                        <li className={'pagination_page'}>
+                        <li className={'pagination_page'} key={number}>
                             <a href={'?page=' + number}>{number}</a>
                         </li> :
-                        <li className={'pagination_page_current'}>{number}</li>
+                        <li className={'pagination_page_current'} key={number}>{number}</li>
                 )}
                 {this.state.pagination.no_further ? null : <li>
                     <a href={"?page=" + (this.state.pagination.current_page + 1) }>{'>>'}</a>

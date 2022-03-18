@@ -60,12 +60,12 @@ export default class QuotesList extends React.Component {
             <div className={'quotes_list'}>
                 <div className="quotes_list_header">
                     <ul>
-                        <li className="quotes_symbol">Symbol</li>
-                        <li className="quotes_name">Name</li>
-                        <li className="quotes_price">Price $</li>
-                        <li className="quotes_change">Change $</li>
-                        <li className="quotes_change_percent">Change %</li>
-                        <li className="quotes_volume">Volume</li>
+                        <li className="quotes_list_symbol">Symbol</li>
+                        <li className="quotes_list_name">Name</li>
+                        <li className="quotes_list_price">Price $</li>
+                        <li className="quotes_list_change">Change $</li>
+                        <li className="quotes_list_change_percent">Change %</li>
+                        <li className="quotes_list_volume">Volume</li>
                     </ul>
                 </div>
                 <div>{this.state.quotes.map(quotes =>
@@ -76,7 +76,7 @@ export default class QuotesList extends React.Component {
         ) : <span>No quotes. Update the data.</span>
         // Returning render
         return(
-            <div className={'quotes'}>
+            <div className={'quote_list_block'}>
                 <div className={'quotes_search'}>
                     <input type="text" id="quotes_search"
                            placeholder="Type symbol or name here"

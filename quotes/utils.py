@@ -2,6 +2,7 @@ import sqlite3
 import requests
 from bs4 import BeautifulSoup
 from django.http import Http404
+from quotes.models import Quotes
 
 
 # Parsing quotes names, symbols and etc.
@@ -73,6 +74,9 @@ def quote_name_search(keyword):
             'change_percent': result[4],
             'volume': result[5],
             'slug': result[1].lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
+            'downloaded': Quotes.objects.filter(
+                slug=result[1].lower().replace(' ', '_').replace(',', '_').replace('.', '_')
+            ).exists()
         } for result in cursor.fetchall()]
         cursor.close()
         return quotes

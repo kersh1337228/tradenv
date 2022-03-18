@@ -16,13 +16,33 @@ export default class QuotesListDetail extends React.Component {
             downloaded: props.quotes.downloaded,
         }
         // Methods binding
+        this.check_quotes = this.check_quotes.bind(this)
+    }
 
+    async check_quotes() {
+        if (!this.state.downloaded) {
+            let current = this
+            await $.ajax({
+                url: `${window.location.origin}/quotes/detail/${this.state.slug}/`,
+                type: 'GET',
+                data: {
+                    symbol: this.state.symbol,
+                    name: this.state.name,
+                },
+                success: function () {
+                    current.setState({
+                        downloaded: true
+                    })
+                },
+                error: function (response) {}
+            })
+        }
     }
 
     render() {
         // Add router here
         return(
-            <Link to={'/quotes/detail/' + this.state.slug}>
+            <Link to={'/quotes/detail/' + this.state.slug + '/'} onClick={this.check_quotes}>
                 <div className={
                     this.state.downloaded ? 'quotes_list_details_downloaded' : 'quotes_list_details'
                 }><ul>
