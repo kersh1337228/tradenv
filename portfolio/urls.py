@@ -28,4 +28,9 @@ urlpatterns = [
         PortfolioAPIView.as_view(),
         name='portfolio_delete'
     ),
+    path(
+        'detail/<slug:slug>/stocks/<str:type>/',
+        PortfolioAPIView.as_view(),
+        name='portfolio_stocks_manage'
+    ),
 ]

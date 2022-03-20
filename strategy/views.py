@@ -1,7 +1,11 @@
+import re
 from django.shortcuts import render
 from rest_framework import generics
+from rest_framework.response import Response
 from log.models import Log
+from log.serializers import LogSerializer
 from strategy.models import Strategy
+from strategy.serializers import StrategySerializer
 
 
 class StrategyAPIView(
@@ -9,25 +13,42 @@ class StrategyAPIView(
     generics.CreateAPIView
 ):
     def get(self, request, *args, **kwargs):
+        strategy = Strategy.objects.get(
+            slug=kwargs.get('slug')
+        )
         if request.is_ajax():
-            pass
+            return Response(
+                data={
+                    'strategy': StrategySerializer(strategy).data,
+                    'logs': LogSerializer(
+                        Log.objects.filter(strategy=strategy),
+                        many=True
+                    ).data,
+                },
+                status=200,
+            )
         else:
             return render(
-                template_name='strategy_detail.html',
-                context={
-                    'strategy': Strategy.objects.get(
-                        slug=kwargs.get('slug')
-                    ),
-                    'logs': Log.objects.filter(
-                        strategy__slug=kwargs.get('slug')
-                    )
-                },
+                template_name='index.html',
                 request=request
             )
 
     def post(self, request, *args, **kwargs):
         if request.is_ajax():
-            pass
+            data = {key: request.data.get(key) for key in request.data}
+            serializer = StrategySerializer(data={
+                'name': data.get('name'),
+                'long_limit': data.get('long_limit'),
+                'short_limit': data.get('short_limit'),
+                'slug': re.sub(r'[.\- ]+','_' , data.get('name').strip().lower()),
+            })
+            serializer.is_valid(raise_exception=True)
+            return Response(
+                data={
+                    'strategy': serializer.create()
+                },
+                status=200
+            )
         else:
             pass
 
@@ -55,12 +76,17 @@ class StrategyListAPIView(
 ):
     def get(self, request, *args, **kwargs):
         if request.is_ajax():
-            pass
+            return Response(
+                data={
+                    'strategies': StrategySerializer(
+                        Strategy.objects.all(),
+                        many=True
+                    ).data
+                },
+                status=200,
+            )
         else:
             return render(
-                template_name='strategy_list.html',
-                context={
-                    'strategies': Strategy.objects.all()
-                },
+                template_name='index.html',
                 request=request
             )

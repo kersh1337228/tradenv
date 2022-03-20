@@ -1,4 +1,6 @@
 import datetime
+import re
+
 from django.forms import model_to_dict
 from django.shortcuts import render
 from rest_framework import generics
@@ -9,6 +11,7 @@ from log.serializers import LogSerializer
 from portfolio.models import Portfolio
 from portfolio.serializers import PortfolioSerializer
 from quotes.models import Stock, Quotes
+from quotes.serializers import QuotesSerializer, StockSerializer
 
 
 class PortfolioAPIView(
@@ -41,7 +44,7 @@ class PortfolioAPIView(
             data = {key: request.data.get(key) for key in request.data}
             serializer = PortfolioSerializer(data={
                 'name': data.get('name').strip().capitalize(),
-                'slug': data.get('name').strip().lower().replace(' ', '_'),
+                'slug': re.sub(r'[.\- ]+','_' , data.get('name').strip().lower()),
                 'balance': data.get('balance')
             })
             serializer.is_valid(raise_exception=True)
@@ -56,21 +59,24 @@ class PortfolioAPIView(
 
     def patch(self, request, *args, **kwargs):  # update
         if request.is_ajax():
+            # Getting data from client
             data = {key: request.data.get(key) for key in request.data}
-            data.pop('csrfmiddlewaretoken', None)
-            portfolio = Portfolio.objects.get(
-                slug=request.data.get('slug')
-            )
-            Portfolio.objects.filter(
-                slug=request.data.get('slug')
-            ).update(
-                name=request.data.get('name').strip(),
-                slug=request.data.get('name').strip().lower().replace(' ', '_'),
-                balance=request.data.get('balance'),
-                last_updated=datetime.datetime.now()
-            )
+            serializer = PortfolioSerializer(data={
+                'name': data.get('name').strip().capitalize(),
+                'slug': re.sub(r'[.\- ]+', '_', data.get('name').strip().lower()),
+                'balance': data.get('balance'),
+                'last_updated': datetime.datetime.now(),
+            } if re.sub(
+                r'[.\- ]+', '_', data.get('name').strip().lower()
+            ) != kwargs.get('slug') else {
+                'balance': data.get('balance'),
+                'last_updated': datetime.datetime.now(),
+            }, partial=True)
+            serializer.is_valid(raise_exception=True)
             return Response(
-                data={},
+                data={
+                    'portfolio': serializer.update(kwargs.get('slug'))
+                },
                 status=200
             )
         else:
@@ -80,9 +86,9 @@ class PortfolioAPIView(
         if request.is_ajax():
             # Add, change amount of or delete stocks
             portfolio = Portfolio.objects.get(
-                slug=request.data.get('slug'),
+                slug=kwargs.get('slug'),
             )
-            if request.data.get('type') == 'add':
+            if kwargs.get('type') == 'add':
                 stock = Stock.objects.create(
                     origin=Quotes.objects.get(
                         symbol=request.data.get('symbol')
@@ -90,14 +96,14 @@ class PortfolioAPIView(
                     amount=1,
                 )
                 portfolio.stocks.add(stock)
+                portfolio.save()
                 return Response(
-                    data={'stock': {
-                        'symbol': stock.origin.symbol,
-                        'name': stock.origin.name
-                    }},
+                    data={'stock': StockSerializer(
+                        stock
+                    ).data},
                     status=200
                 )
-            elif request.data.get('type') == 'change_amount':
+            elif kwargs.get('type') == 'change_amount':
                 portfolio.stocks.filter(
                     origin=Quotes.objects.get(
                         symbol=request.data.get('symbol')
@@ -107,7 +113,7 @@ class PortfolioAPIView(
                 )
                 portfolio.last_updated=datetime.datetime.now()
                 portfolio.save()
-            elif request.data.get('type') == 'delete':
+            elif kwargs.get('type') == 'delete':
                 portfolio.stocks.get(
                     origin=Quotes.objects.get(
                         symbol=request.data.get('symbol')
@@ -123,7 +129,7 @@ class PortfolioAPIView(
     def delete(self, request, *args, **kwargs):  # delete
         if request.is_ajax():
             Portfolio.objects.get(
-                slug=request.data.get('slug')
+                slug=kwargs.get('slug')
             ).delete()
             return Response(
                 data={},
@@ -142,7 +148,7 @@ class PortfolioListAPIView(
             return Response(
                 data={
                     'portfolios': PortfolioSerializer(
-                        Portfolio.objects.all(),
+                        Portfolio.objects.order_by('-last_updated', '-created'),
                         many=True
                     ).data
                 },

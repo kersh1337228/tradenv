@@ -57,7 +57,7 @@ export default class PortfolioList extends React.Component {
                 balance: event.target.balance.value
             },
             success: function (response) {
-                let portfolios = this.state.portfolios
+                let portfolios = current.state.portfolios
                 portfolios.unshift(response.portfolio)
                 current.setState({
                     portfolios: portfolios,
@@ -79,7 +79,7 @@ export default class PortfolioList extends React.Component {
                     <ul>
                         <li className="portfolio_list_name">Name</li>
                         <li className="portfolio_list_balance">Balance</li>
-                        <li className="portfolio_list_shares">Shares</li>
+                        <li className="portfolio_list_stocks">Shares</li>
                         <li className="portfolio_list_logs">Logs</li>
                         <li className="portfolio_list_created">Created</li>
                         <li className="portfolio_list_updated">Last updated</li>
@@ -91,7 +91,7 @@ export default class PortfolioList extends React.Component {
                             <ul>
                                 <li className="portfolio_list_detail_name">{portfolio.name}</li>
                                 <li className="portfolio_list_detail_balance">{portfolio.balance}</li>
-                                <li className="portfolio_list_detail_shares">{portfolio.stocks.length}</li>
+                                <li className="portfolio_list_detail_stocks">{portfolio.stocks.length}</li>
                                 <li className="portfolio_list_detail_created">{portfolio.created}</li>
                                 <li className="portfolio_list_detail_last_updated">{portfolio.last_updated}</li>
                             </ul>
@@ -109,6 +109,11 @@ export default class PortfolioList extends React.Component {
                     </div>
                     <form className={'portfolio_list_create_form'} style={{display: "none"}}
                           ref={this.formRef} onSubmit={this.portfolio_create}>
+                        {'name' in this.state.errors ? <ul>
+                            {this.state.errors.name.map(error =>
+                                <li key={error}>{error}</li>
+                            )}
+                        </ul> : null}
                         <input name={'name'} type={'text'} placeholder={'Portfolio name'} required={true}/>
                         {'balance' in this.state.errors ? <ul>
                             {this.state.errors.balance.map(error =>

@@ -16,7 +16,7 @@ class Strategy(models.Model):
         unique=True
     )
     long_limit = models.PositiveSmallIntegerField(
-        verbose_name='Shares amount limit to store'
+        verbose_name='Shares amount limit to store',
     )
     short_limit = models.SmallIntegerField(
         verbose_name='Shares amount limit to borrow'
@@ -27,29 +27,6 @@ class Strategy(models.Model):
         unique=True,
         db_index=True,
     )
-
-    def get_results(self):
-        logs = Log.objects.filter(
-            strategy=self
-        )
-        if logs:
-            success = 0
-            for log in logs:
-                success = success + 1 \
-                    if log.price_deltas['balance']['currency'] >= 0 \
-                    else success
-            return {
-                'success': {
-                    'amount': success,
-                    'percent': round(success / len(logs), 2) * 100,
-                },
-                'fail': {
-                    'amount': len(logs) - success,
-                    'percent': round(1 - success / len(logs), 2) * 100,
-                }
-            }
-        else:
-            return None
 
     def save(self, **kwargs):
         if not self.slug or self.slug != self.name.replace(' ', '_').lower():

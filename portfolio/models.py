@@ -20,10 +20,10 @@ class Portfolio(models.Model):
     stocks = models.ManyToManyField(
         'quotes.Stock',
         related_name='portfolio_stocks',
-        blank=True
+        blank=True,
     )
     created = models.DateTimeField(
-        auto_now_add=True
+        auto_now_add=True,
     )
     last_updated = models.DateTimeField(
         auto_now=True,

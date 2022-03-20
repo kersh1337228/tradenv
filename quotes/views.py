@@ -3,7 +3,10 @@ from django.forms import model_to_dict
 from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
+
+from portfolio.models import Portfolio
 from quotes.models import Quotes
+from quotes.serializers import QuotesSerializer
 from quotes.utils import paginate, get_all_quotes, quote_name_search, parse_quotes_names
 
 
@@ -16,11 +19,11 @@ class QuotesAPIView(
             quotes = Quotes.objects.filter(slug=kwargs.get('slug'))
             return Response(
                 data={
-                    'quotes': model_to_dict(Quotes.add_quote_by_symbol(
+                    'quotes': QuotesSerializer(Quotes.add_quote_by_symbol(
                         request.query_params.get('symbol'),
                         request.query_params.get('name'),
                         kwargs.get('slug'),
-                    )) if not quotes else model_to_dict(quotes.last())
+                    )).data if not quotes else QuotesSerializer(quotes.last()).data
                 }, status=201
             )
         else:
@@ -53,36 +56,30 @@ class QuotesListAPIView(
     def get(self, request, *args, **kwargs):  # list
         if request.is_ajax():
             if request.query_params.get('downloaded'):
-                quotes = Quotes.objects.filter(
-                    Q(symbol__istartswith=request.query_params.get('name')) |
-                    Q(name__istartswith=request.query_params.get('name'))
-                )
                 return Response(
-                    {'results': [{
-                        'symbol': quote.symbol,
-                        'name': quote.name,
-                        'slug': quote.slug,
-                    } for quote in quotes] if quotes else []},
-                    status=200
+                    data=QuotesSerializer(
+                        Quotes.objects.filter(
+                            Q(symbol__istartswith=request.query_params.get('query')) |
+                            Q(name__istartswith=request.query_params.get('query'))
+                        ) if not request.query_params.get('slug') else Quotes.objects.filter((
+                            Q(symbol__istartswith=request.query_params.get('query')) |
+                            Q(name__istartswith=request.query_params.get('query'))) & ~(
+                            Q(slug__in=[stock.origin.slug for stock in Portfolio.objects.get(
+                                slug=request.query_params.get('slug')
+                            ).stocks.all()])
+                        )),
+                        many=True
+                    ).data,
+                    status=200,
                 )
             else:
-                # quotes_html = ''
-                # for quote in quotes:
-                #     quotes_html += render_to_string(
-                #         template_name='quotes.html',
-                #         context={
-                #             'quote': quote,
-                #             'downloaded_quotes': [quote.symbol for quote in Quotes.objects.all()],
-                #         },
-                #         request=request,
-                #     )
                 return Response(
                     data={
-                        'quotes': quote_name_search(request.query_params.get('search'))
-                            if request.query_params.get('search') else
+                        'quotes': quote_name_search(request.query_params.get('query'))
+                            if request.query_params.get('query') else
                             get_all_quotes(int(request.query_params.get('page', 1)) - 1, 50),
                         'pagination': paginate(int(request.query_params.get('page', 1)), 50)
-                        if not request.query_params.get('search') else None,
+                        if not request.query_params.get('query') else None,
                     },
                     status=200
                 )

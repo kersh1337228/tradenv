@@ -39,7 +39,7 @@ export default class QuotesList extends React.Component {
             url: `${window.location.href}`,
             type: 'GET',
             data: {
-                search: event.target.value,
+                query: event.target.value,
                 page: window.location.href.match(/\/\?page=([\w]+)/) ?
                     window.location.href.match(/\/\?page=([\w]+)/)[1] : 1
             },

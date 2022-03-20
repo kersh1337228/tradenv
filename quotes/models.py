@@ -87,6 +87,14 @@ class Quotes(models.Model):
         )  # Building ohlc quotes plot
         return quote
 
+    def get_tendency(self):
+        last = self.quotes.get(list(self.quotes.keys())[-1])
+        return {
+            'change': round(last['close'] - last['open'], 2),
+            'change_percent': round((last['close'] / last['open'] - 1) * 100, 2),
+            'quotes': last
+        }
+
     def __str__(self):
         return self.name
 
