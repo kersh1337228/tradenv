@@ -2,6 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import LogListDetail from '../log/LogListDetail'
 
+
 export default class PortfolioDetail extends React.Component {
     constructor(props) {
         super(props)
@@ -10,6 +11,7 @@ export default class PortfolioDetail extends React.Component {
             logs: {},
             quotes: [],
             config: false,
+            stocks_config: {},
             errors: {},
         }
         // Methods binding
@@ -17,13 +19,18 @@ export default class PortfolioDetail extends React.Component {
         this.portfolio_update = this.portfolio_update.bind(this)
         this.show_search = this.show_search.bind(this)
         this.stocks_search = this.stocks_search.bind(this)
-        this.delete = this.delete.bind(this)
-        this.add_stocks = this.add_stocks.bind(this)
+        this.portfolio_delete = this.portfolio_delete.bind(this)
+        this.stocks_add = this.stocks_add.bind(this)
+        this.show_change_amount = this.show_change_amount.bind(this)
+        this.hide_change_amount = this.hide_change_amount.bind(this)
+        this.stocks_change_amount = this.stocks_change_amount.bind(this)
+        this.stocks_delete = this.stocks_delete.bind(this)
         // Input reference initialization
         this.searchRef = React.createRef()
         this.stockBlockRef = React.createRef()
         this.nameRef = React.createRef()
         this.balanceRef = React.createRef()
+        this.stocksAmountRef = React.createRef()
         // Initial request
         this.initial_request()
     }
@@ -44,12 +51,12 @@ export default class PortfolioDetail extends React.Component {
         })
     }
 
-    delete() {
+    portfolio_delete() {
         if (confirm('Do you really want to delete the portfolio?')) {
             $.ajax({
                 url: `${window.location.origin}/portfolio/delete/${this.state.portfolio.slug}/`,
                 type: 'DELETE',
-                success: function (response) {
+                success: function () {
                     window.location.href = '/portfolio/list/'
                 },
                 error: function (response) {}
@@ -122,7 +129,7 @@ export default class PortfolioDetail extends React.Component {
         }
     }
 
-    add_stocks(event) {
+    stocks_add(event) {
         let current = this
         $.ajax({
             url: `${window.location.href}stocks/add/`,
@@ -134,9 +141,9 @@ export default class PortfolioDetail extends React.Component {
                 symbol: event.target.id
             },
             success: function (response) {
-                let stocks = current.state.portfolio.stocks
-                stocks.unshift()
-                console.log(response)
+                current.setState({
+                    portfolio: response.portfolio
+                })
             },
             error: function (response) {
                 current.setState({
@@ -144,6 +151,77 @@ export default class PortfolioDetail extends React.Component {
                 })
             }
         })
+    }
+
+    show_change_amount(event) {
+        let stocks_config = this.state.stocks_config
+        stocks_config[event.target.id] = true
+        this.setState({
+            stocks_config: stocks_config
+        })
+    }
+
+    hide_change_amount(event) {
+        let stocks_config = this.state.stocks_config
+        delete stocks_config[event.target.id]
+        this.setState({
+            stocks_config: stocks_config
+        })
+    }
+
+    stocks_change_amount(event) {
+        let current = this
+        $.ajax({
+            url: `${window.location.href}stocks/change_amount/`,
+            type: 'PUT',
+            headers: {
+                'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
+            },
+            data: {
+                symbol: event.target.id,
+                amount: current.stocksAmountRef.current.value,
+            },
+            success: function (response) {
+                // Disabling config mode
+                let stocks_config = current.state.stocks_config
+                delete stocks_config[event.target.id]
+                current.setState({
+                    portfolio: response.portfolio,
+                    stocks_config: stocks_config,
+                })
+            },
+            error: function (response) {
+                current.setState({
+                    errors: response.responseJSON
+                })
+            }
+        })
+    }
+
+    stocks_delete(event) {
+        if (confirm(`Do you really want to delete the ${event.target.id} stock from your portfolio?`)) {
+            let current = this
+            $.ajax({
+                url: `${window.location.href}stocks/delete/`,
+                type: 'PUT',
+                headers: {
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
+                },
+                data: {
+                    symbol: event.target.id,
+                },
+                success: function (response) {
+                    current.setState({
+                        portfolio: response.portfolio,
+                    })
+                },
+                error: function (response) {
+                    current.setState({
+                        errors: response.responseJSON
+                    })
+                }
+            })
+        }
     }
 
     render() {
@@ -159,7 +237,7 @@ export default class PortfolioDetail extends React.Component {
                     <span className="config_button" id="portfolio_config"
                           onClick={() => {this.setState({config: true,})}}>Configure</span>
                     <span className="config_button" id="portfolio_delete"
-                          onClick={this.delete}>Delete</span>
+                          onClick={this.portfolio_delete}>Delete</span>
                 </div>
             let main_fields = !this.state.config ?
                 <>
@@ -204,16 +282,37 @@ export default class PortfolioDetail extends React.Component {
                             <li className="portfolio_stocks_origin_name">
                                 <Link to={'quotes/detail/' + stock.origin.slug + '/'}>{stock.origin.name}</Link>
                             </li>
-                            <li className="portfolio_stocks_amount">{stock.amount}</li>
+                            {stock.origin.symbol in this.state.stocks_config ?
+                                <li className="portfolio_stocks_amount">
+                                    {'amount' in this.state.errors ? <ul>
+                                        {this.state.errors.amount.map(error =>
+                                            <li key={error}>{error}</li>
+                                        )}
+                                    </ul> : null}
+                                    <input name={'portfolio_stocks_amount_change'}
+                                           defaultValue={stock.amount} ref={this.stocksAmountRef} />
+                                </li> :
+                                <li className="portfolio_stocks_amount">{stock.amount}</li>
+                            }
                             <li className="quotes_list_detail_price">{stock.origin.tendency.quotes.close}</li>
                             <li className="quotes_list_detail_change">{stock.origin.tendency.change}</li>
                             <li className="quotes_list_detail_change_percent">{stock.origin.tendency.change_percent}</li>
                             <li className="quotes_list_detail_volume">{stock.origin.tendency.quotes.volume}</li>
                             <li className="portfolio_stocks_edit_menu">...
-                                <ul>
-                                    <li id="portfolio_stocks_amount_change">Change amount</li>
-                                    <li id="portfolio_stocks_delete">Delete</li>
-                                </ul>
+                                {stock.origin.symbol in this.state.stocks_config ?
+                                    <ul>
+                                        <li id={stock.origin.symbol}
+                                         onClick={this.hide_change_amount}>Cancel</li>
+                                        <li id={stock.origin.symbol}
+                                            onClick={this.stocks_change_amount}>Confirm</li>
+                                    </ul> :
+                                    <ul>
+                                        <li id={stock.origin.symbol}
+                                        onClick={this.show_change_amount}>Change amount</li>
+                                        <li id={stock.origin.symbol}
+                                            onClick={this.stocks_delete}>Delete</li>
+                                    </ul>
+                                }
                             </li>
                         </ul>
                     )}
@@ -240,7 +339,7 @@ export default class PortfolioDetail extends React.Component {
                                 <li className="quotes_list_detail_change_percent">{quotes.tendency.change_percent}</li>
                                 <li className="quotes_list_detail_volume">{quotes.tendency.quotes.volume}</li>
                             </ul>
-                            <div id={quotes.symbol} onClick={this.add_stocks}>Add</div>
+                            <div id={quotes.symbol} onClick={this.stocks_add}>Add</div>
                         </li>
                     )}
                 </ul> : !this.searchRef.current ? null : this.searchRef.current.value ?

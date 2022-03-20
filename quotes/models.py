@@ -107,4 +107,4 @@ class Stock(models.Model):
         on_delete=models.CASCADE,
         related_name='stock_origin'
     )  # Current amount of stocks in the portfolio
-    amount = models.IntegerField()
+    amount = models.PositiveSmallIntegerField()

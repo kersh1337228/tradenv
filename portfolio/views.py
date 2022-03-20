@@ -1,17 +1,13 @@
 import datetime
 import re
-
-from django.forms import model_to_dict
 from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
-
 from log.models import Log
 from log.serializers import LogSerializer
 from portfolio.models import Portfolio
 from portfolio.serializers import PortfolioSerializer
 from quotes.models import Stock, Quotes
-from quotes.serializers import QuotesSerializer, StockSerializer
 
 
 class PortfolioAPIView(
@@ -44,7 +40,7 @@ class PortfolioAPIView(
             data = {key: request.data.get(key) for key in request.data}
             serializer = PortfolioSerializer(data={
                 'name': data.get('name').strip().capitalize(),
-                'slug': re.sub(r'[.\- ]+','_' , data.get('name').strip().lower()),
+                'slug': re.sub(r'[.\- ]+', '_', data.get('name').strip().lower()),
                 'balance': data.get('balance')
             })
             serializer.is_valid(raise_exception=True)
@@ -89,30 +85,38 @@ class PortfolioAPIView(
                 slug=kwargs.get('slug'),
             )
             if kwargs.get('type') == 'add':
-                stock = Stock.objects.create(
-                    origin=Quotes.objects.get(
-                        symbol=request.data.get('symbol')
-                    ),
-                    amount=1,
-                )
-                portfolio.stocks.add(stock)
-                portfolio.save()
-                return Response(
-                    data={'stock': StockSerializer(
-                        stock
-                    ).data},
-                    status=200
-                )
-            elif kwargs.get('type') == 'change_amount':
-                portfolio.stocks.filter(
-                    origin=Quotes.objects.get(
-                        symbol=request.data.get('symbol')
+                if not portfolio.stocks.filter(origin__symbol=request.data.get('symbol')).exists():
+                    stock = Stock.objects.create(
+                        origin=Quotes.objects.get(
+                            symbol=request.data.get('symbol')
+                        ),
+                        amount=1,
                     )
-                ).update(
-                    amount=request.data.get('amount')
-                )
-                portfolio.last_updated=datetime.datetime.now()
-                portfolio.save()
+                    portfolio.stocks.add(stock)
+                    portfolio.save()
+            elif kwargs.get('type') == 'change_amount':
+                errors = {}
+                try:
+                    amount = int(request.data.get('amount'))
+                    if amount <= 0:
+                        errors['amount'] = ['Stocks amount must be positive value.']
+                except ValueError:
+                    errors['amount'] = ['Invalid value format.']
+                if errors:
+                    return Response(
+                        data=errors,
+                        status=400,
+                    )
+                else:
+                    portfolio.stocks.filter(
+                        origin=Quotes.objects.get(
+                            symbol=request.data.get('symbol')
+                        )
+                    ).update(
+                        amount=request.data.get('amount')
+                    )
+                    portfolio.last_updated = datetime.datetime.now()
+                    portfolio.save()
             elif kwargs.get('type') == 'delete':
                 portfolio.stocks.get(
                     origin=Quotes.objects.get(
@@ -120,7 +124,9 @@ class PortfolioAPIView(
                     ),
                 ).delete()
             return Response(
-                data={},
+                data={
+                    'portfolio': PortfolioSerializer(portfolio).data
+                },
                 status=200
             )
         else:
