@@ -1,3 +1,4 @@
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from log.models import Log
 from strategy.utils import simple_buy_or_sell
@@ -17,9 +18,23 @@ class Strategy(models.Model):
     )
     long_limit = models.PositiveSmallIntegerField(
         verbose_name='Shares amount limit to store',
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(32767)
+        ]
     )
-    short_limit = models.SmallIntegerField(
-        verbose_name='Shares amount limit to borrow'
+    short_limit = models.PositiveSmallIntegerField(
+        verbose_name='Shares amount limit to borrow',
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(32767)
+        ]
+    )
+    created = models.DateTimeField(
+        auto_now_add=True,
+    )
+    last_updated = models.DateTimeField(
+        auto_now=True,
     )
     buy_or_sell = simple_buy_or_sell
     slug = models.SlugField(

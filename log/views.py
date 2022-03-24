@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect
 from rest_framework import generics
 from rest_framework.response import Response
-
 from log.models import Log
+from log.serializers import LogSerializer
 
 
 # Shows list of all analysis logs
@@ -11,13 +11,18 @@ class LogListAPIView(
 ):
     def get(self, request, *args, **kwargs):  # list
         if request.is_ajax():
-            pass
+            return Response(
+                data={
+                    'logs': LogSerializer(
+                        Log.objects.all(),
+                        many=True
+                    ).data
+                },
+                status=200,
+            )
         else:
             return render(
-                template_name='log_list.html',
-                context={
-                    'logs': Log.objects.all()
-                },
+                template_name='index.html',
                 request=request
             )
 
@@ -28,19 +33,26 @@ class LogAPIView(
 ):
     def get(self, request, *args, **kwargs):  # detail
         if request.is_ajax():
-            pass
+            return Response(
+                data={
+                    'log': LogSerializer(
+                        generics.get_object_or_404(
+                            Log,
+                            slug=kwargs.get('slug')
+                        )
+                    ).data
+                },
+                status=200
+            )
         else:
             return render(
-                template_name='log_detail.html',
-                context={
-                    'log': generics.get_object_or_404(Log, slug=kwargs.get('slug'))
-                },
+                template_name='index.html',
                 request=request
             )
 
     def delete(self, request, *args, **kwargs):  # delete
-        Log.objects.get(slug=kwargs.get('slug')).delete()
         if request.is_ajax():
+            Log.objects.get(slug=kwargs.get('slug')).delete()
             return Response({}, status=200)
         else:
-            return redirect(to='log_list')
+            pass

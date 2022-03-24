@@ -7,6 +7,8 @@ import PortfolioList from './components/portfolio/PortfolioList'
 import PortfolioDetail from "./components/portfolio/PortfolioDetail";
 import StrategyList from "./components/strategy/StrategyList";
 import StrategyDetail from "./components/strategy/StrategyDetail";
+import LogList from "./components/log/LogList";
+import LogDetail from "./components/log/LogDetail";
 
 
 function App() {
@@ -25,7 +27,8 @@ function App() {
             <Route path={'/strategy/list/'} element={<StrategyList />} />
             <Route path={'/strategy/detail/:slug/'} element={<StrategyDetail />} />
             {/*Log app paths*/}
-            {/*<Route path={'/log/list/'} element={<LogList />} />*/}
+            <Route path={'/log/list/'} element={<LogList />} />
+            <Route path={'/log/detail/:slug/'} element={<LogDetail />} />
         </Routes>
       </BrowserRouter>
   )

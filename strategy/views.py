@@ -1,3 +1,4 @@
+import datetime
 import re
 from django.shortcuts import render
 from rest_framework import generics
@@ -37,7 +38,7 @@ class StrategyAPIView(
         if request.is_ajax():
             data = {key: request.data.get(key) for key in request.data}
             serializer = StrategySerializer(data={
-                'name': data.get('name'),
+                'name': data.get('name').capitalize(),
                 'long_limit': data.get('long_limit'),
                 'short_limit': data.get('short_limit'),
                 'slug': re.sub(r'[.\- ]+','_' , data.get('name').strip().lower()),
@@ -54,7 +55,28 @@ class StrategyAPIView(
 
     def patch(self, request, *args, **kwargs):
         if request.is_ajax():
-            pass
+            # Getting data from client
+            data = {key: request.data.get(key) for key in request.data}
+            serializer = StrategySerializer(data={
+                'name': data.get('name').strip().capitalize(),
+                'slug': re.sub(r'[.\- ]+', '_', data.get('name').strip().lower()),
+                'long_limit': data.get('long_limit'),
+                'short_limit': data.get('short_limit'),
+                'last_updated': datetime.datetime.now(),
+            } if re.sub(
+                r'[.\- ]+', '_', data.get('name').strip().lower()
+            ) != kwargs.get('slug') else {
+                'long_limit': data.get('long_limit'),
+                'short_limit': data.get('short_limit'),
+                'last_updated': datetime.datetime.now(),
+            }, partial=True)
+            serializer.is_valid(raise_exception=True)
+            return Response(
+                data={
+                    'strategy': serializer.update(kwargs.get('slug'))
+                },
+                status=200
+            )
         else:
             pass
 
@@ -66,7 +88,13 @@ class StrategyAPIView(
 
     def delete(self, request, *args, **kwargs):
         if request.is_ajax():
-            pass
+            Strategy.objects.get(
+                slug=kwargs.get('slug')
+            ).delete()
+            return Response(
+                data={},
+                status=200
+            )
         else:
             pass
 
@@ -79,7 +107,7 @@ class StrategyListAPIView(
             return Response(
                 data={
                     'strategies': StrategySerializer(
-                        Strategy.objects.all(),
+                        Strategy.objects.order_by('last_updated'),
                         many=True
                     ).data
                 },

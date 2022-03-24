@@ -88,14 +88,12 @@ def analyse(portfolio, time_interval_start, time_interval_end, strategy):
         stocks={
             stock.origin.symbol : {
             'name': stock.origin.name,
-            'quotes': stock.origin.quotes.get_quotes_for_period(
+            'quotes': stock.origin.get_quotes_for_period(
                 time_interval_start,
                 time_interval_end
             )
         } for stock in portfolio.stocks.all()}
     )  # Creating log model instance to save analysis data
-    portfolio.logs.add(log_instance)  # Attaching log to the portfolio
-    portfolio.save()
     return log_instance
 
 

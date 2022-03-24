@@ -5,7 +5,9 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse_lazy
 from analysis.logic.analysis import analyse
 from portfolio.models import Portfolio
+from portfolio.serializers import PortfolioSerializer
 from strategy.models import Strategy
+from strategy.serializers import StrategySerializer
 
 
 class AnalysisAPIView(
@@ -20,10 +22,14 @@ class AnalysisAPIView(
             if request.query_params.get('step') == 'initial':
                 return Response(
                     data={
-                        'portfolios': Portfolio.objects.all(),
-                        'strategies': [
-                            model_to_dict(strategy) for strategy in Strategy.objects.all()
-                        ]
+                        'portfolios': PortfolioSerializer(
+                            Portfolio.objects.all(),
+                            many=True
+                        ).data,
+                        'strategies': StrategySerializer(
+                            Strategy.objects.all(),
+                            many=True
+                        ).data,
                     },
                     status=200,
                 )
@@ -35,7 +41,7 @@ class AnalysisAPIView(
                 if not len(portfolio.stocks.all()):
                     return Response(
                         data={
-                            'error_message': 'No stocks in the portfolio'
+                            'portfolio': ['No stocks in the portfolio'],
                         },
                         status=400,
                     )
@@ -48,7 +54,6 @@ class AnalysisAPIView(
         else:
             return render(
                 template_name='index.html',
-                context={'portfolios': Portfolio.objects.all()},
                 request=request,
             )
 
@@ -68,7 +73,7 @@ class AnalysisAPIView(
                 )
             )
             return redirect(
-                'logs_detail',
+                'log_detail',
                 slug=log.slug,
             )
 

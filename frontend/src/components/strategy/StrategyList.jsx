@@ -58,7 +58,7 @@ export default class StrategyList extends React.Component {
                 short_limit: event.target.short_limit.value,
             },
             success: function (response) {
-                let strategies = this.state.strategies
+                let strategies = current.state.strategies
                 strategies.unshift(response.strategy)
                 current.setState({
                     strategies: strategies,
@@ -81,6 +81,8 @@ export default class StrategyList extends React.Component {
                         <li className="strategy_list_name">Name</li>
                         <li className="strategy_list_long_limit">Long limit</li>
                         <li className="strategy_list_short_limit">Short limit</li>
+                        <li className="strategy_list_created">Created</li>
+                        <li className="strategy_list_last_updated">Last updated</li>
                     </ul>
                 </div>
                 {this.state.strategies.map(strategy =>
@@ -90,6 +92,8 @@ export default class StrategyList extends React.Component {
                                 <li className="strategy_list_name">{strategy.name}</li>
                                 <li className="strategy_list_long_limit">{strategy.long_limit}</li>
                                 <li className="strategy_list_short_limit">{strategy.short_limit}</li>
+                                <li className="strategy_list_created">{strategy.created}</li>
+                                <li className="strategy_list_last_updated">{strategy.last_updated}</li>
                             </ul>
                         </div>
                     </Link>
