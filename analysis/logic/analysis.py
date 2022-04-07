@@ -1,5 +1,4 @@
 import os
-from copy import deepcopy
 import datetime
 import numpy
 import pandas
@@ -10,66 +9,21 @@ import mplfinance
 from log.models import Log
 
 
-'''Copies the portfolio and stocks to allow the analyser
- function to change the data of the class 
- instance but not of the database'''
-class PortfolioImage:
-    class StockImage:
-        def __init__(self, stock):
-            self.origin = stock.origin
-            self.amount = 0
-
-    def __init__(self, portfolio):
-        self.balance = portfolio.balance
-        self.stocks = [
-            self.StockImage(stock) for stock in portfolio.stocks.all()
-        ]
-        self.cost = self.balance
-
-    # Balance in currency + stocks price
-    # according to its close price by the date
-    def set_cost(self, date):
-        cost = self.balance
-        for stocks in self.stocks:
-            cost += stocks.amount * stocks.origin.quotes[date]['close']
-        self.cost = cost
-
-    def __str__(self):
-        return str({
-            'balance': self.balance,
-            'stocks': [{
-                'amount': stock.amount,
-                'name': stock.origin.name
-            } for stock in self.stocks],
-            'cost': self.cost
-        })
-
-
 '''Analyser function, made to analyse the
  quotes data using different strategies'''
 def analyse(portfolio, time_interval_start, time_interval_end, strategy):
-    date_range = pandas.date_range(
-        datetime.datetime.strptime(
-            time_interval_start,
-            '%Y-%m-%d'
-        ),
-        datetime.datetime.strptime(
-            time_interval_end,
-            '%Y-%m-%d'
-        ) - datetime.timedelta(days=3),
-    )  # Converting dates to date range
-    logs = log(
-        PortfolioImage(portfolio),
-        date_range,
-        strategy,
-    )  # Analysing and logging
+    logs = strategy.buy_or_sell(
+        portfolio,
+        time_interval_start,
+        time_interval_end
+    )
     log_instance = Log.objects.create(
         time_interval_start=time_interval_start,
         time_interval_end=time_interval_end,
         price_deltas={
             'balance': {
-                'percent': round(logs[-1].cost / logs[0].cost - 1, 2) * 100,
-                'currency': round(logs[-1].cost - logs[0].cost, 2)
+                'percent': round(logs[-1]['cost'] / logs[0]['cost'] - 1, 2) * 100,
+                'currency': round(logs[-1]['cost'] - logs[0]['cost'], 2)
             },
             'stocks': [
                 {
@@ -95,19 +49,6 @@ def analyse(portfolio, time_interval_start, time_interval_end, strategy):
         } for stock in portfolio.stocks.all()}
     )  # Creating log model instance to save analysis data
     return log_instance
-
-
-'''Log function uses the strategy to analyse
- the portfolio on the chosen time period'''
-def log(portfolio_image, date_range, strategy):
-    # Taking class instance copy for further work with the original one,
-    # not being afraid to change logged data
-    logs = [deepcopy(portfolio_image)]
-    for date in date_range:
-        for index in range(len(portfolio_image.stocks)):
-            portfolio_image = strategy.buy_or_sell(portfolio_image, index, date)
-        logs.append(deepcopy(portfolio_image))
-    return logs
 
 
 '''Building the plot, showing the total savings amount and

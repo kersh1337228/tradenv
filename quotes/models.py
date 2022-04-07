@@ -45,7 +45,11 @@ class Quotes(models.Model):
                 '%Y-%m-%d'
             ),
         )
-        return {date: quotes for date, quotes in enumerate(self.quotes) if date in date_range}
+        return {
+            date: quotes
+            for date, quotes in self.quotes.items()
+            if date in date_range
+        }
 
     # Method to parse quotes of the instrument by its symbol
     # and then create a database note and model instance

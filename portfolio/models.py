@@ -49,5 +49,15 @@ class Portfolio(models.Model):
             ) for stock in self.stocks.all()])
         ).strftime('%Y-%m-%d').tolist()
 
+    # Get all portfolio stocks quotes for certain period
+    def get_all_quotes(self, period_start, period_end):
+        return {
+            stock.origin.name:
+            stock.origin.get_quotes_for_period(
+                period_start,
+                period_end
+            ) for stock in self.stocks.all()
+        }
+
     def __str__(self):
         return self.name
