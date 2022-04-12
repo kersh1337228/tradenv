@@ -1,9 +1,8 @@
-from django.forms import model_to_dict
 from django.shortcuts import render, redirect
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.reverse import reverse_lazy
-from analysis.logic.analysis import analyse
+from log.models import Log
 from portfolio.models import Portfolio
 from portfolio.serializers import PortfolioSerializer
 from strategy.models import Strategy
@@ -62,19 +61,18 @@ class AnalysisAPIView(
         if request.is_ajax():
             pass
         else:
-            log = analyse(
-                Portfolio.objects.get(
-                    slug=request.data.get('portfolio')
-                ),
-                request.data.get('time_interval_start'),
-                request.data.get('time_interval_end'),
-                Strategy.objects.get(
-                    slug=request.data.get('strategy')
-                )
-            )
             return redirect(
                 'log_detail',
-                slug=log.slug,
+                slug=Log.objects.create(
+                    range_start=request.data.get('time_interval_start'),
+                    range_end=request.data.get('time_interval_end'),
+                    strategy=Strategy.objects.get(
+                        slug=request.data.get('strategy')
+                    ),
+                    portfolio=Portfolio.objects.get(
+                        slug=request.data.get('portfolio')
+                    ),
+                ).slug,
             )
 
     def put(self, request, *args, **kwargs):

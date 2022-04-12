@@ -6,49 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as grd
 import matplotlib.dates as mdates
 import mplfinance
-from log.models import Log
-
-
-'''Analyser function, made to analyse the
- quotes data using different strategies'''
-def analyse(portfolio, time_interval_start, time_interval_end, strategy):
-    logs = strategy.buy_or_sell(
-        portfolio,
-        time_interval_start,
-        time_interval_end
-    )
-    log_instance = Log.objects.create(
-        time_interval_start=time_interval_start,
-        time_interval_end=time_interval_end,
-        price_deltas={
-            'balance': {
-                'percent': round(logs[-1]['cost'] / logs[0]['cost'] - 1, 2) * 100,
-                'currency': round(logs[-1]['cost'] - logs[0]['cost'], 2)
-            },
-            'stocks': [
-                {
-                    'name': stock.origin.name,
-                    'percent': round(stock.origin.quotes[time_interval_end]['close'] /
-                                stock.origin.quotes[time_interval_start]['close'] - 1, 2) * 100,
-                    'currency': round(
-                        stock.origin.quotes[time_interval_end]['close'] -
-                        stock.origin.quotes[time_interval_start]['close'], 2
-                    )
-                }
-                for stock in portfolio.stocks.all()]
-        },
-        strategy=strategy,
-        portfolio=portfolio,
-        stocks={
-            stock.origin.symbol : {
-            'name': stock.origin.name,
-            'quotes': stock.origin.get_quotes_for_period(
-                time_interval_start,
-                time_interval_end
-            )
-        } for stock in portfolio.stocks.all()}
-    )  # Creating log model instance to save analysis data
-    return log_instance
 
 
 '''Building the plot, showing the total savings amount and

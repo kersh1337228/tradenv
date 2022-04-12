@@ -12,7 +12,7 @@ export default class LogListDetail extends React.Component {
         return (
             <div className="log_list_detail">
                 <Link to={'/log/detail/' + this.log.slug + '/'}><h4 className="log_list_detail_header">
-                    {this.log.strategy.name} strategy on {this.log.portfolio.name} portfolio from {this.log.time_interval_start} to {this.log.time_interval_end}
+                    {this.log.strategy.name} strategy on {this.log.portfolio.name} portfolio from {this.log.range_start} to {this.log.range_end}
                 </h4></Link>
                 <h4>Total price change</h4>
                 <table>

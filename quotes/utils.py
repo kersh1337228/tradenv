@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup
 from django.http import Http404
 from quotes.models import Quotes
+import asyncio
+import multiprocessing
 
 
 # Parsing quotes names, symbols and etc.

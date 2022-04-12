@@ -50,14 +50,29 @@ class Portfolio(models.Model):
         ).strftime('%Y-%m-%d').tolist()
 
     # Get all portfolio stocks quotes for certain period
-    def get_all_quotes(self, period_start, period_end):
+    def get_all_quotes(self, range_start, range_end):
         return {
             stock.origin.name:
-            stock.origin.get_quotes_for_period(
-                period_start,
-                period_end
+            stock.origin.get_quotes_for_range(
+                range_start,
+                range_end
             ) for stock in self.stocks.all()
         }
+
+    def stocks_price_deltas(self, range_start, range_end):
+        return [
+            {
+                'name': stock.origin.name,
+                'percent': round(
+                    stock.origin.quotes[range_end]['close'] /
+                    stock.origin.quotes[range_start]['close'] - 1, 2) * 100,
+                'currency': round(
+                    stock.origin.quotes[range_end]['close'] -
+                    stock.origin.quotes[range_start]['close'], 2
+                )
+            }
+            for stock in self.stocks.all()
+        ]
 
     def __str__(self):
         return self.name

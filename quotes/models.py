@@ -34,14 +34,14 @@ class Quotes(models.Model):
     api_key = 'J7JRRVLFS9HZFPBY'
 
     # Returns quotes only for certain period
-    def get_quotes_for_period(self, period_start, period_end):
+    def get_quotes_for_range(self, range_start, range_end):
         date_range = pandas.date_range(
             datetime.datetime.strptime(
-                period_start,
+                range_start,
                 '%Y-%m-%d'
             ),
             datetime.datetime.strptime(
-                period_end,
+                range_end,
                 '%Y-%m-%d'
             ),
         )

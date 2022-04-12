@@ -1,5 +1,4 @@
 import React from 'react'
-import LogListDetail from '../log/LogListDetail'
 
 
 export default class LogDetail extends React.Component {
@@ -35,7 +34,7 @@ export default class LogDetail extends React.Component {
             return (
                 <div className="log_detail">
                     <h2 className="log_detail_header">
-                        {this.state.log.strategy.name} strategy on {this.state.log.portfolio.name} portfolio from {this.state.log.time_interval_start} to {this.state.log.time_interval_end}
+                        {this.state.log.strategy.name} strategy on {this.state.log.portfolio.name} portfolio from {this.state.log.range_start} to {this.state.log.range_end}
                     </h2>
                     <h3>Total price change</h3>
                     <table>
