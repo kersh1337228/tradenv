@@ -56,13 +56,16 @@ class Quotes(models.Model):
     @staticmethod
     def add_quote_by_symbol(symbol, name, slug, period='DAILY'):
         # Parsing quotes data
-        data = requests.get('https://www.alphavantage.co/query?' +
-                            f'function=TIME_SERIES_{period}&' +
-                            f'symbol={symbol}&' +
-                            'outputsize=full&' +
-                            'datatype=json&' +
-                            f'apikey={Quotes.api_key}').json()
-        data = data[list(data.keys())[-1]]
+        meta_data, data = requests.get(
+            url='https://www.alphavantage.co/query',
+            params={
+                'function': f'TIME_SERIES_{period}',
+                'symbol': symbol,
+                'outputsize': 'full',
+                'datatype': 'json',
+                'apikey': Quotes.api_key,
+            }
+        ).json().values()
         quotes = last = {}  # Formatting quotes
         for date in pandas.date_range(
             start=datetime.datetime.strptime(list(data.keys())[-1], '%Y-%m-%d'),
