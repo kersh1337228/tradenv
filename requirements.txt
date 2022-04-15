@@ -2,9 +2,7 @@ Django
 djangorestframework
 Pillow
 numpy
-matplotlib
-mplfinance
-sqlite3
 pandas
-requests
 beautifulsoup4
+requests
+aiohttp
