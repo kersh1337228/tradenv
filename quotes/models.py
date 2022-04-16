@@ -34,7 +34,7 @@ class Quotes(models.Model):
     api_key = 'J7JRRVLFS9HZFPBY'
 
     # Returns quotes only for certain period
-    def get_quotes_for_range(self, range_start, range_end):
+    def get_quotes_for_range(self, range_start: str, range_end: str) -> dict:
         date_range = pandas.date_range(
             datetime.datetime.strptime(
                 range_start,
@@ -54,7 +54,7 @@ class Quotes(models.Model):
     # Method to parse quotes of the instrument by its symbol
     # and then create a database note and model instance
     @staticmethod
-    def add_quote_by_symbol(symbol, name, slug, period='DAILY'):
+    def add_quote_by_symbol(symbol: str, name: str, slug: str, period: str = 'DAILY'):
         # Parsing quotes data
         meta_data, data = requests.get(
             url='https://www.alphavantage.co/query',
@@ -68,8 +68,8 @@ class Quotes(models.Model):
         ).json().values()
         quotes = last = {}  # Formatting quotes
         for date in pandas.date_range(
-            start=datetime.datetime.strptime(list(data.keys())[-1], '%Y-%m-%d'),
-            end=datetime.datetime.strptime(list(data.keys())[0], '%Y-%m-%d'),
+            start=datetime.datetime.strptime(list(data)[-1], '%Y-%m-%d'),
+            end=datetime.datetime.strptime(list(data)[0], '%Y-%m-%d'),
             freq='D'
         ):
             key = date.strftime('%Y-%m-%d')
@@ -94,8 +94,8 @@ class Quotes(models.Model):
         )  # Building ohlc quotes plot
         return quote
 
-    def get_tendency(self):
-        last = self.quotes.get(list(self.quotes.keys())[-1])
+    def get_tendency(self) -> dict:
+        last = self.quotes.get(list(self.quotes)[-1])
         return {
             'change': round(last['close'] - last['open'], 2),
             'change_percent': round((last['close'] / last['open'] - 1) * 100, 2),

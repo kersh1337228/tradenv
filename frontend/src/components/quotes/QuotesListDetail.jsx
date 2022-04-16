@@ -8,11 +8,6 @@ export default class QuotesListDetail extends React.Component {
         this.state = {
             symbol: props.quotes.symbol,
             name: props.quotes.name,
-            slug: props.quotes.slug,
-            price: props.quotes.price,
-            change: props.quotes.change,
-            change_percent: props.quotes.change_percent,
-            volume: props.quotes.volume,
             downloaded: props.quotes.downloaded,
         }
         // Methods binding
@@ -48,10 +43,6 @@ export default class QuotesListDetail extends React.Component {
                 }><ul>
                     <li className="quotes_list_detail_symbol">{this.state.symbol}</li>
                     <li className="quotes_list_detail_name">{this.state.name}</li>
-                    <li className="quotes_list_detail_price">{this.state.price}</li>
-                    <li className="quotes_list_detail_change">{this.state.change}</li>
-                    <li className="quotes_list_detail_change_percent">{this.state.change_percent}</li>
-                    <li className="quotes_list_detail_volume">{this.state.volume}</li>
                 </ul></div>
             </Link>
         )
