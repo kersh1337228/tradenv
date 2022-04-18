@@ -1,5 +1,5 @@
 import React from 'react'
-import Plot from "./Plot";
+import Plot from "../Plot";
 
 
 export default class QuotesDetail extends React.Component {
@@ -31,11 +31,6 @@ export default class QuotesDetail extends React.Component {
 
     render() {
         try{
-            let last_quotes = this.state.quotes.quotes[
-                Object.keys(this.state.quotes.quotes)[
-                Object.keys(this.state.quotes.quotes).length - 1
-                    ]
-                ]
             return(
                 <div className="quotes_detail">
                     <h1 className="quotes_detail_name">{this.state.quotes.name}</h1>
@@ -50,18 +45,16 @@ export default class QuotesDetail extends React.Component {
                         <li>Date</li>
                     </ul>
                     <ul className="quotes_detail_quotes">
-                        <li>{last_quotes.open}</li>
-                        <li>{last_quotes.high}</li>
-                        <li>{last_quotes.low}</li>
-                        <li>{last_quotes.close}</li>
-                        <li>{last_quotes.volume}</li>
-                        <li>{Object.keys(this.state.quotes.quotes)[
-                        Object.keys(this.state.quotes.quotes).length - 1
-                            ]}</li>
+                        <li>{this.state.quotes.tendency.quotes.open}</li>
+                        <li>{this.state.quotes.tendency.quotes.high}</li>
+                        <li>{this.state.quotes.tendency.quotes.low}</li>
+                        <li>{this.state.quotes.tendency.quotes.close}</li>
+                        <li>{this.state.quotes.tendency.quotes.volume}</li>
+                        <li>{this.state.quotes.tendency.quotes.date}</li>
                     </ul>
                     <div className="quotes_price_plot">
                         <h3>Price change</h3>
-                        <Plot className={'quotes_price_plot_canvas'} />
+                        <Plot />
                     </div>
                 </div>
             )

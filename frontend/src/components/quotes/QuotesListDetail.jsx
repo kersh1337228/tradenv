@@ -8,28 +8,6 @@ export default class QuotesListDetail extends React.Component {
         this.state = {
             stock: props.quotes
         }
-        // Methods binding
-        this.check_quotes = this.check_quotes.bind(this)
-    }
-
-    async check_quotes() {
-        // if (!this.state.downloaded) {
-        //     let current = this
-        //     await $.ajax({
-        //         url: `${window.location.origin}/quotes/detail/${this.state.stock.slug}/`,
-        //         type: 'GET',
-        //         data: {
-        //             symbol: this.state.stock.symbol,
-        //             name: this.state.stock.name,
-        //         },
-        //         success: function () {
-        //             current.setState({
-        //                 downloaded: true
-        //             })
-        //         },
-        //         error: function (response) {}
-        //     })
-        // }
     }
 
     render() {

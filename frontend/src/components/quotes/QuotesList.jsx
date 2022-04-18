@@ -66,7 +66,7 @@ export default class QuotesList extends React.Component {
             async: false,
             success: function (response) {
                 current.setState({
-                    quotes: response.quotes,
+                    quotes: response.quotes.length ? response.quotes : 'No quotes matching query',
                     pagination: response.pagination
                 })
             },
@@ -76,26 +76,30 @@ export default class QuotesList extends React.Component {
 
     render() {
         // Checking if there are quotes downloaded
-        let quotes_list = this.state.quotes.length ? (
-            <div className={'quotes_list'}>
-                <div className="quotes_list_header">
-                    <ul>
-                        <li className="quotes_list_symbol">Symbol</li>
-                        <li className="quotes_list_name">Name</li>
-                        <li className="quotes_list_price">Price $</li>
-                        <li className="quotes_list_change">Change $</li>
-                        <li className="quotes_list_change_percent">Change %</li>
-                        <li className="quotes_list_volume">Volume</li>
-                    </ul>
+        try {
+            var quotes_list = this.state.quotes.length ? (
+                <div className={'quotes_list'}>
+                    <div className="quotes_list_header">
+                        <ul>
+                            <li className="quotes_list_symbol">Symbol</li>
+                            <li className="quotes_list_name">Name</li>
+                            <li className="quotes_list_price">Price $</li>
+                            <li className="quotes_list_change">Change $</li>
+                            <li className="quotes_list_change_percent">Change %</li>
+                            <li className="quotes_list_volume">Volume</li>
+                        </ul>
+                    </div>
+                    <div>{this.state.quotes.map(quotes =>
+                        <QuotesListDetail quotes={quotes} key={quotes.slug}/>
+                    )}</div>
+                    {this.state.pagination ? <Pagination pagination={this.state.pagination} /> : null}
                 </div>
-                <div>{this.state.quotes.map(quotes =>
-                    <QuotesListDetail quotes={quotes} key={quotes.slug}/>
-                )}</div>
-                {this.state.pagination ? <Pagination pagination={this.state.pagination} /> : null}
-            </div>
-        ) : <span>No quotes. <span onClick={this.parse_quotes_request}>
-            Update the data.
-        </span></span>
+            ) : <span>No quotes. <span onClick={this.parse_quotes_request}>
+                Update the data.
+            </span></span>
+        } catch(error) {
+            quotes_list = <span>{this.state.quotes}</span>
+        }
         // Returning render
         return(
             <div className={'quote_list_block'}>

@@ -1,6 +1,6 @@
 import csv
 import datetime
-import sqlite3
+import re
 import requests
 from django.http import Http404
 import django
@@ -33,7 +33,7 @@ def parse_quote_by_symbol(symbol: str, name: str) -> tuple[str, str, dict] | Non
             name=name,
             symbol=symbol,
             quotes=quotes,
-            slug=name.lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
+            slug=re.sub('[\W]+', '_', name.lower()),
         )
         daily_reader.close()
         return symbol, name, quotes
@@ -70,36 +70,6 @@ def parse_quotes_names() -> None:
             pool.join()
     else:
         print(f'Parsing error. Http response status code is {response.status_code}')
-
-
-# Return quotes of instruments with matching name or symbol
-def quote_name_search(keyword: str) -> list:
-    with sqlite3.connect('quotes/stocks.sqlite3') as connection:
-        cursor = connection.cursor()
-        cursor.execute('SELECT * FROM stocks WHERE name LIKE "?%" OR symbol LIKE "?%"', (keyword,) * 2)
-        quotes = [{
-            'symbol': symbol,
-            'name': name,
-            'slug': name.lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
-            'downloaded': Quotes.objects.filter(name=name).exists()
-        } for symbol, name in cursor.fetchall()]
-        cursor.close()
-        return quotes
-
-
-# Returns all quotes parsed
-def get_all_quotes(page: int, limit: int) -> list :
-    with sqlite3.connect('quotes/stocks.sqlite3') as connection:
-        cursor = connection.cursor()
-        cursor.execute('SELECT * FROM stocks LIMIT ? OFFSET ?', (limit, page * limit))
-        quotes = [{
-            'symbol': symbol,
-            'name': name,
-            'slug': name.lower().replace(' ', '_').replace(',', '_').replace('.', '_'),
-            'downloaded': Quotes.objects.filter(name=name).exists()
-        } for symbol, name in cursor.fetchall()]
-        cursor.close()
-        return quotes
 
 
 # Paginate quotes list pages

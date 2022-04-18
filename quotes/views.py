@@ -1,13 +1,10 @@
 from django.db.models import Q
-from django.forms import model_to_dict
 from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
-
-from portfolio.models import Portfolio
 from quotes.models import Quotes
 from quotes.serializers import QuotesSerializer
-from quotes.utils import paginate, get_all_quotes, quote_name_search, parse_quotes_names
+from quotes.utils import paginate, parse_quotes_names
 
 
 class QuotesAPIView(
@@ -55,36 +52,25 @@ class QuotesListAPIView(
 ):
     def get(self, request, *args, **kwargs):  # list
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
-            if request.query_params.get('downloaded'):
-                return Response(
-                    data=QuotesSerializer(
-                        Quotes.objects.filter(
-                            Q(symbol__istartswith=request.query_params.get('query')) |
-                            Q(name__istartswith=request.query_params.get('query'))
-                        ) if not request.query_params.get('slug') else Quotes.objects.filter((
-                            Q(symbol__istartswith=request.query_params.get('query')) |
-                            Q(name__istartswith=request.query_params.get('query'))) & ~(
-                            Q(slug__in=[stock.origin.slug for stock in Portfolio.objects.get(
-                                slug=request.query_params.get('slug')
-                            ).stocks.all()])
-                        )),
-                        many=True
-                    ).data,
-                    status=200,
-                )
-            else:
+            if Quotes.objects.exists():
+                query = request.query_params.get('query', None)
                 limit = int(request.query_params.get('limit', 50))
                 page = int(request.query_params.get('page', 1))
+                quotes = Quotes.objects.filter(
+                    Q(name__istartswith=query) | Q(symbol__istartswith=query)
+                ) if query else Quotes.objects.all()[(page - 1) * limit:page * limit]
                 return Response(
                     data={
-                        'quotes': quote_name_search(request.query_params.get('query'))
-                            if request.query_params.get('query') else
-                            QuotesSerializer(
-                                Quotes.objects.all()[(page - 1) * limit:(page - 1) * limit + limit],
-                                many=True
-                            ).data,
-                        'pagination': paginate(page, limit)
-                        if not request.query_params.get('query') else None,
+                        'quotes': QuotesSerializer(quotes, many=True).data,
+                        'pagination': paginate(page, limit) if not query else None,
+                    },
+                    status=200
+                )
+            else:
+                return Response(
+                    data={
+                        'quotes': 'No quotes',
+                        'pagination': None,
                     },
                     status=200
                 )
@@ -96,7 +82,8 @@ class QuotesListAPIView(
 
     def put(self, request, *args, **kwargs):  # Refresh the quotes data
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
-            parse_quotes_names()
+            if not Quotes.objects.exists():
+                parse_quotes_names()
             return self.get(request)
         else:
             pass

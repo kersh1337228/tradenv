@@ -95,10 +95,14 @@ class Quotes(models.Model):
         return quote
 
     def get_tendency(self) -> dict:
-        last = self.quotes.get(list(self.quotes)[-1])
+        last_date = list(self.quotes)[-1]
+        last = self.quotes.get(last_date)
+        last.update({'date': last_date})
         return {
             'change': round(last['close'] - last['open'], 2),
-            'change_percent': round((last['close'] / last['open'] - 1) * 100, 2),
+            'change_percent': round(
+                (last['close'] / last['open'] - 1) * 100, 2
+            ) if last['open'] != 0 else 'Zero opening price',
             'quotes': last
         }
 
