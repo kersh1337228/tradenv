@@ -17,7 +17,7 @@ class StrategyAPIView(
         strategy = Strategy.objects.get(
             slug=kwargs.get('slug')
         )
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return Response(
                 data={
                     'strategy': StrategySerializer(strategy).data,
@@ -35,7 +35,7 @@ class StrategyAPIView(
             )
 
     def post(self, request, *args, **kwargs):
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             data = {key: request.data.get(key) for key in request.data}
             serializer = StrategySerializer(data={
                 'name': data.get('name').capitalize(),
@@ -54,7 +54,7 @@ class StrategyAPIView(
             pass
 
     def patch(self, request, *args, **kwargs):
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             # Getting data from client
             data = {key: request.data.get(key) for key in request.data}
             serializer = StrategySerializer(data={
@@ -81,13 +81,13 @@ class StrategyAPIView(
             pass
 
     def put(self, request, *args, **kwargs):
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             pass
         else:
             pass
 
     def delete(self, request, *args, **kwargs):
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             Strategy.objects.get(
                 slug=kwargs.get('slug')
             ).delete()
@@ -103,7 +103,7 @@ class StrategyListAPIView(
     generics.ListAPIView
 ):
     def get(self, request, *args, **kwargs):
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return Response(
                 data={
                     'strategies': StrategySerializer(

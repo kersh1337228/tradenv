@@ -16,40 +16,39 @@ class AnalysisAPIView(
     # Analysis page get request, returns the form fields
     # step by step, depending on the previous choices
     def get(self, request, *args, **kwargs):
-        if request.is_ajax():
-            # Initial request
-            if request.query_params.get('step') == 'initial':
-                return Response(
-                    data={
-                        'portfolios': PortfolioSerializer(
-                            Portfolio.objects.all(),
-                            many=True
-                        ).data,
-                        'strategies': StrategySerializer(
-                            Strategy.objects.all(),
-                            many=True
-                        ).data,
-                    },
-                    status=200,
-                )
-            # Choosing the portfolio
-            elif request.query_params.get('step') == 'portfolio':
-                portfolio = Portfolio.objects.get(
-                    slug=request.query_params.get('slug')
-                )
-                if not len(portfolio.stocks.all()):
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+            match request.query_params.get('step'):
+                case 'initial':  # Initial request
                     return Response(
                         data={
-                            'portfolio': ['No stocks in the portfolio'],
+                            'portfolios': PortfolioSerializer(
+                                Portfolio.objects.all(),
+                                many=True
+                            ).data,
+                            'strategies': StrategySerializer(
+                                Strategy.objects.all(),
+                                many=True
+                            ).data,
                         },
-                        status=400,
+                        status=200,
                     )
-                return Response(
-                    data={
-                        'dates': portfolio.get_quotes_dates()
-                    },
-                    status=200,
-                )
+                case 'portfolio':  # Choosing the portfolio
+                    portfolio = Portfolio.objects.get(
+                        slug=request.query_params.get('slug')
+                    )
+                    if not len(portfolio.stocks.all()):
+                        return Response(
+                            data={
+                                'portfolio': ['No stocks in the portfolio'],
+                            },
+                            status=400,
+                        )
+                    return Response(
+                        data={
+                            'dates': portfolio.get_quotes_dates()
+                        },
+                        status=200,
+                    )
         else:
             return render(
                 template_name='index.html',
@@ -58,7 +57,7 @@ class AnalysisAPIView(
 
     # Getting form data and analysing them
     def post(self, request, *args, **kwargs):
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             pass
         else:
             return redirect(

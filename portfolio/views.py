@@ -18,7 +18,7 @@ class PortfolioAPIView(
         portfolio = Portfolio.objects.get(
             slug=kwargs.get('slug')
         )
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return Response(
                 data={
                     'portfolio': PortfolioSerializer(portfolio).data,
@@ -36,7 +36,7 @@ class PortfolioAPIView(
             )
 
     def post(self, request, *args, **kwargs):  # create
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             data = {key: request.data.get(key) for key in request.data}
             serializer = PortfolioSerializer(data={
                 'name': data.get('name').strip().capitalize(),
@@ -54,7 +54,7 @@ class PortfolioAPIView(
             pass
 
     def patch(self, request, *args, **kwargs):  # update
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             # Getting data from client
             data = {key: request.data.get(key) for key in request.data}
             serializer = PortfolioSerializer(data={
@@ -79,7 +79,7 @@ class PortfolioAPIView(
             pass
 
     def put(self, request, *args, **kwargs):  # manage stocks
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             # Add, change amount of or delete stocks
             portfolio = Portfolio.objects.get(
                 slug=kwargs.get('slug'),
@@ -133,7 +133,7 @@ class PortfolioAPIView(
             pass
 
     def delete(self, request, *args, **kwargs):  # delete
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             Portfolio.objects.get(
                 slug=kwargs.get('slug')
             ).delete()
@@ -150,7 +150,7 @@ class PortfolioListAPIView(
     generics.ListAPIView
 ):
     def get(self, request, *args, **kwargs):  # list
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return Response(
                 data={
                     'portfolios': PortfolioSerializer(

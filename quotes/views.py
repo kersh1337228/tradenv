@@ -15,7 +15,7 @@ class QuotesAPIView(
     generics.CreateAPIView
 ):
     def get(self, request, *args, **kwargs):  # detail
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             quotes = Quotes.objects.filter(slug=kwargs.get('slug'))
             return Response(
                 data={
@@ -23,7 +23,7 @@ class QuotesAPIView(
                         request.query_params.get('symbol'),
                         request.query_params.get('name'),
                         kwargs.get('slug'),
-                    )).data if not quotes else QuotesSerializer(quotes.last()).data
+                    )).data if not quotes.exists() else QuotesSerializer(quotes.last()).data
                 }, status=201
             )
         else:
@@ -37,13 +37,13 @@ class QuotesAPIView(
             )
 
     def put(self, request, *args, **kwargs):
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             pass
         else:
             pass
 
     def delete(self, request, *args, **kwargs):
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             pass
         else:
             pass
@@ -54,7 +54,7 @@ class QuotesListAPIView(
     generics.UpdateAPIView
 ):
     def get(self, request, *args, **kwargs):  # list
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             if request.query_params.get('downloaded'):
                 return Response(
                     data=QuotesSerializer(
@@ -73,12 +73,17 @@ class QuotesListAPIView(
                     status=200,
                 )
             else:
+                limit = int(request.query_params.get('limit', 50))
+                page = int(request.query_params.get('page', 1))
                 return Response(
                     data={
                         'quotes': quote_name_search(request.query_params.get('query'))
                             if request.query_params.get('query') else
-                            get_all_quotes(int(request.query_params.get('page', 1)) - 1, 50),
-                        'pagination': paginate(int(request.query_params.get('page', 1)), 50)
+                            QuotesSerializer(
+                                Quotes.objects.all()[(page - 1) * limit:(page - 1) * limit + limit],
+                                many=True
+                            ).data,
+                        'pagination': paginate(page, limit)
                         if not request.query_params.get('query') else None,
                     },
                     status=200
@@ -89,9 +94,9 @@ class QuotesListAPIView(
                 template_name='index.html',
             )
 
-    async def put(self, request, *args, **kwargs):  # Refresh the quotes data
-        if request.is_ajax():
-            await parse_quotes_names()
+    def put(self, request, *args, **kwargs):  # Refresh the quotes data
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+            parse_quotes_names()
             return self.get(request)
         else:
             pass

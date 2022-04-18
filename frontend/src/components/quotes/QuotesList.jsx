@@ -7,12 +7,13 @@ export default class QuotesList extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
-            quotes: {},
+            quotes: [],
             pagination: {}
         }
         // Methods binding
         this.initial_request = this.initial_request.bind(this)
         this.search = this.search.bind(this)
+        this.parse_quotes_request = this.parse_quotes_request.bind(this)
         // Initial request
         this.initial_request()
     }
@@ -22,6 +23,25 @@ export default class QuotesList extends React.Component {
         $.ajax({
             url: `${window.location.href}`,
             type: 'GET',
+            data: {},
+            success: function (response) {
+                current.setState({
+                    quotes: response.quotes,
+                    pagination: response.pagination
+                })
+            },
+            error: function (response) {}
+        })
+    }
+
+    parse_quotes_request() {
+        let current = this
+        $.ajax({
+            url: `${window.location.href}`,
+            type: 'PUT',
+            headers: {
+                'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
+            },
             data: {},
             success: function (response) {
                 current.setState({
@@ -69,11 +89,13 @@ export default class QuotesList extends React.Component {
                     </ul>
                 </div>
                 <div>{this.state.quotes.map(quotes =>
-                    <QuotesListDetail quotes={quotes} key={quotes.symbol}/>
+                    <QuotesListDetail quotes={quotes} key={quotes.slug}/>
                 )}</div>
                 {this.state.pagination ? <Pagination pagination={this.state.pagination} /> : null}
             </div>
-        ) : <span>No quotes. Update the data.</span>
+        ) : <span>No quotes. <span onClick={this.parse_quotes_request}>
+            Update the data.
+        </span></span>
         // Returning render
         return(
             <div className={'quote_list_block'}>

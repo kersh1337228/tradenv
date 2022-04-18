@@ -10,7 +10,7 @@ class LogListAPIView(
     generics.ListAPIView
 ):
     def get(self, request, *args, **kwargs):  # list
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return Response(
                 data={
                     'logs': LogSerializer(
@@ -32,7 +32,7 @@ class LogAPIView(
     generics.RetrieveUpdateDestroyAPIView
 ):
     def get(self, request, *args, **kwargs):  # detail
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return Response(
                 data={
                     'log': LogSerializer(
@@ -51,7 +51,7 @@ class LogAPIView(
             )
 
     def delete(self, request, *args, **kwargs):  # delete
-        if request.is_ajax():
+        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             Log.objects.get(slug=kwargs.get('slug')).delete()
             return Response({}, status=200)
         else:

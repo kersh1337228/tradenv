@@ -79,7 +79,7 @@ class Quotes(models.Model):
                     'high': float(data[key]['2. high']),
                     'low': float(data[key]['3. low']),
                     'close': float(data[key]['4. close']),
-                    'volume': float(data[key]['5. volume']),
+                    'volume': int(data[key]['5. volume']),
                     'non-trading': False
                 }
             else:
