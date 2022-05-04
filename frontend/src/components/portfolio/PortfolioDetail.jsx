@@ -117,7 +117,7 @@ export default class PortfolioDetail extends React.Component {
                 },
                 success: function (response) {
                     current.setState({
-                        quotes: response
+                        quotes: response.quotes
                     })
                 },
                 error: function (response) {

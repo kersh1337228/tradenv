@@ -24,30 +24,32 @@ class Log(models.Model):
         db_index=True,
     )
 
-    def get_price_deltas(self):
+    def serialize_logs(self):
+        logs = self.logs.copy()
+        for log in logs:
+            log['stocks'] = sum(log['stocks'].values())
+        return logs
+
+    def get_price_deltas(self) -> dict:
         return {
             'balance': {
                 'percent': round(self.logs[-1]['cost'] / self.logs[0]['cost'] - 1, 2) * 100,
                 'currency': round(self.logs[-1]['cost'] - self.logs[0]['cost'], 2)
             },
             'stocks': self.portfolio.stocks_price_deltas(
-                self.range_start,
-                self.range_end
+                self.range_start, self.range_end
             )
         }
 
     def get_stocks_quotes(self):
         return self.portfolio.get_all_quotes(
-            self.range_start,
-            self.range_end
+            self.range_start, self.range_end
         )
 
     def save(self, **kwargs):
         if not self.logs:
             self.logs = self.strategy.buy_or_sell(
-                self.portfolio,
-                self.range_start,
-                self.range_end,
+                self.portfolio, self.range_start, self.range_end,
             )
         if not self.slug:
             self.slug = f'log_{datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}'

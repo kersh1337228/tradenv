@@ -1,5 +1,5 @@
 import React from 'react'
-import Plot from "../Plot";
+import PlotFinancial from "../PlotFinancial/PlotFinancial";
 
 
 export default class QuotesDetail extends React.Component {
@@ -31,6 +31,7 @@ export default class QuotesDetail extends React.Component {
 
     render() {
         try{
+            console.log(this.state)
             return(
                 <div className="quotes_detail">
                     <h1 className="quotes_detail_name">{this.state.quotes.name}</h1>
@@ -54,7 +55,7 @@ export default class QuotesDetail extends React.Component {
                     </ul>
                     <div className="quotes_price_plot">
                         <h3>Price change</h3>
-                        <Plot />
+                        <PlotFinancial data={this.state.quotes.quotes} />
                     </div>
                 </div>
             )

@@ -15,6 +15,8 @@ class LogSerializer(serializers.ModelSerializer):
     # Getter-methods fields
     price_deltas = serializers.ReadOnlyField(source='get_price_deltas')
     stocks_quotes = serializers.ReadOnlyField(source='get_stocks_quotes')
+    # Logs serialization for proper display
+    logs = serializers.ReadOnlyField(source='serialize_logs')
 
     def create(self, validated_data=None):
         return LogSerializer(Log.objects.create(**self.validated_data))

@@ -1,4 +1,7 @@
 import React from 'react'
+import PlotFinancial from "../PlotFinancial/PlotFinancial";
+import PlotDateValue from "../PlotDateValue/PlotDateValue";
+import './LogDetail.css'
 
 
 export default class LogDetail extends React.Component {
@@ -31,6 +34,7 @@ export default class LogDetail extends React.Component {
 
     render() {
         try {
+            console.log(this.state)
             return (
                 <div className="log_detail">
                     <h2 className="log_detail_header">
@@ -53,10 +57,21 @@ export default class LogDetail extends React.Component {
                         )}
                         </tbody>
                     </table>
+                    <div className={'log_detail_plots'}>
+                        <h3>Portfolio tendency</h3>
+                        <PlotDateValue data={this.state.log.logs} />
+                        <h3>Stocks tendency</h3>
+                        {Object.keys(this.state.log.stocks_quotes).map(name =>
+                            <div key={name}>
+                                <h4>{name}</h4>
+                                <PlotFinancial data={this.state.log.stocks_quotes[name]} />
+                            </div>
+                        )}
+                    </div>
                 </div>
             )
         } catch (error) {
-            return (<div className="log_detail">Error occurred</div>)
+            return (<div className="log_detail">Loading...</div>)
         }
 
     }

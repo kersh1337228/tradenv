@@ -34,23 +34,18 @@ class Quotes(models.Model):
     api_key = 'J7JRRVLFS9HZFPBY'
 
     # Returns quotes only for certain period
-    def get_quotes_for_range(self, range_start: str, range_end: str) -> dict:
-        date_range = pandas.date_range(
-            datetime.datetime.strptime(
-                range_start,
-                '%Y-%m-%d'
-            ),
-            datetime.datetime.strptime(
-                range_end,
-                '%Y-%m-%d'
-            ),
-        )
+    def get_quotes_for_range(self, range_start: datetime.date, range_end: datetime.date, type: str ='standard') -> dict:
+        def try_get_quotes(date):
+            quotes = self.quotes.get(date.strftime('%Y-%m-%d'), None)
+            return quotes if quotes else try_get_quotes(date - datetime.timedelta(days=1))
         return {
             date: quotes
             for date, quotes in self.quotes.items()
-            if date in date_range
+            if date in pandas.date_range(range_start, range_end)
+        } if type == 'standard' else {
+            date: try_get_quotes(date)
+            for date in pandas.date_range(range_start, range_end)
         }
-
     # Method to parse quotes of the instrument by its symbol
     # and then create a database note and model instance
     @staticmethod

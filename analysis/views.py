@@ -17,10 +17,11 @@ class AnalysisAPIView(
     # step by step, depending on the previous choices
     def get(self, request, *args, **kwargs):
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+            response = {'data': {}, 'status': 0}
             match request.query_params.get('step'):
                 case 'initial':  # Initial request
-                    return Response(
-                        data={
+                    response = {
+                        'data': {
                             'portfolios': PortfolioSerializer(
                                 Portfolio.objects.all(),
                                 many=True
@@ -30,25 +31,27 @@ class AnalysisAPIView(
                                 many=True
                             ).data,
                         },
-                        status=200,
-                    )
+                        'status': 200
+                    }
                 case 'portfolio':  # Choosing the portfolio
-                    portfolio = Portfolio.objects.get(
-                        slug=request.query_params.get('slug')
-                    )
+                    portfolio = Portfolio.objects.get(slug=request.query_params.get('slug'))
                     if not len(portfolio.stocks.all()):
-                        return Response(
-                            data={
-                                'portfolio': ['No stocks in the portfolio'],
+                        response['data']['portfolio'] = ['No stocks in the portfolio']
+                        response['status'] = 400
+                    if not portfolio.balance:
+                        if not 'portfolio' in response['data'].keys():
+                            response['data']['portfolio'] = ['Zero portfolio balance']
+                        else:
+                            response['data']['portfolio'].append(['Zero portfolio balance'])
+                        response['status'] = 400
+                    if not response['status']:
+                        response = {
+                            'data': {
+                                'dates': portfolio.get_quotes_dates()
                             },
-                            status=400,
-                        )
-                    return Response(
-                        data={
-                            'dates': portfolio.get_quotes_dates()
-                        },
-                        status=200,
-                    )
+                            'status': 200
+                        }
+            return Response(**response)
         else:
             return render(
                 template_name='index.html',
