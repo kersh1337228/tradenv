@@ -371,6 +371,17 @@ export default class PlotFinancial extends React.Component {
             low: low,
             close: close,
             volume: volume,
+            indicators: this.state.indicators.active.map(
+                indicator => Object.fromEntries(
+                    [
+                        ['displayed_name', indicator.displayed_name],
+                        ['data', indicator.data.slice(
+                            Math.floor(n * this.state.data_range.start),
+                            Math.ceil(n * this.state.data_range.end)
+                        )[i]],
+                    ]
+                )
+            )
         }})
     }
     // Clear coordinate pointer and tooltips if mouse pointer is out of canvas
@@ -470,7 +481,15 @@ export default class PlotFinancial extends React.Component {
             },
             success: function (response) {
                 let indicators = current.state.indicators
-                indicators.active.push(response)
+                if (indicators.active.find(
+                    indicator => indicator.displayed_name === indicators.selected.displayed_name
+                )) {
+                    indicators.active[indicators.active.indexOf(indicators.active.find(
+                        indicator => indicator.displayed_name === indicators.selected.displayed_name
+                    ))] = response
+                } else {
+                    indicators.active.push(response)
+                }
                 current.setState({indicators: indicators}, current.plot)
             },
             error: function (response) {}
@@ -493,25 +512,31 @@ export default class PlotFinancial extends React.Component {
                         style={{display: 'none'}}>{this.state.indicators.available.map(
                         indicator => <li key={indicator.name} onClick={() => {
                             let indicators = this.state.indicators
-                            indicators.selected = indicator
-                            this.setState({indicators: indicators})
+                            indicators.selected = null
+                            this.setState({indicators: indicators}, () => {
+                                indicators.selected = indicator
+                                this.setState({indicators: indicators})
+                            })
                         }}>
                             {indicator.name}
                         </li>
                     )}</ul>
                     <span>Active indicators list:</span>
                     <ul>{this.state.indicators.active.map(
-                        indicator => <li key={indicator.name} onClick={() => {
+                        indicator => <li key={indicator.displayed_name} onClick={() => {
                             let indicators = this.state.indicators
-                            indicators.selected = indicator
-                            this.setState({indicators: indicators})
-                        }}>{indicator.name}</li>
+                            indicators.selected = null
+                            this.setState({indicators: indicators}, () => {
+                                indicators.selected = indicator
+                                this.setState({indicators: indicators})
+                            })
+                        }}>{indicator.displayed_name}</li>
                     )}</ul>
                 </div>
                 <div>
                     <span>Arguments</span>
                     {this.state.indicators.selected ?
-                        <form className={'indicator_form'} id={this.state.indicators.selected.slug}>{
+                        <form className={'indicator_form'} id={this.state.indicators.selected.name}>{
                             Object.entries(this.state.indicators.selected.args).map(
                                 ([name, value]) =>
                                     <input key={name} name={name} placeholder={name} defaultValue={value}/>
@@ -539,6 +564,9 @@ export default class PlotFinancial extends React.Component {
                     <span>Low: {this.state.tooltips.low}</span>
                     <span>Close: {this.state.tooltips.close}</span>
                     <span>Volume: {this.state.tooltips.volume}</span>
+                    {this.state.tooltips.indicators.map(
+                        indicator => <span key={indicator.displayed_name}>{indicator.displayed_name}: {indicator.data}</span>
+                    )}
                 </div> : null
             return (
                 <>

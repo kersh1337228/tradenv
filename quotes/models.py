@@ -152,9 +152,10 @@ class Quotes(models.Model):
                 pass
         return {
             'name': type,
+            'displayed_name': f'{type} {period_length} {price}',
             'args': {
-                'Period length': period_length,
-                'Price': price
+                'period_length': period_length,
+                'price': price
             },
             'data': result
         }
@@ -163,16 +164,16 @@ class Quotes(models.Model):
     def get_indicators_list():
         return [
             {
-                'name': 'Simple moving averages',
-                'slug': 'SMA',
+                'name': 'SMA',
+                'displayed_name': 'SMA 200 close',
                 'args': {
                     'period_length': 200,
                     'price': 'close'
                 }
             },
             {
-                'name': 'Exponential moving averages',
-                'slug': 'EMA',
+                'name': 'EMA',
+                'displayed_name': 'EMA 200 close',
                 'args': {
                     'period_length': 200,
                     'price': 'close'

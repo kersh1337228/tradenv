@@ -91,12 +91,14 @@ class QuotesListAPIView(
             pass
 
 
+# Getting all supported technical analysis indicators list
 @decorators.api_view(('GET',))
 def get_quotes_plot_indicators_list(request, *args, **kwargs):
     if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
         return Response(data=Quotes.get_indicators_list(), status=200)
 
 
+# Getting indicator values list for certain stock
 @decorators.api_view(('GET',))
 def get_quotes_plot_indicator(request, *args, **kwargs):
     if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
