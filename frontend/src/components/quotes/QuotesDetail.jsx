@@ -31,7 +31,6 @@ export default class QuotesDetail extends React.Component {
 
     render() {
         try{
-            console.log(this.state)
             return(
                 <div className="quotes_detail">
                     <h1 className="quotes_detail_name">{this.state.quotes.name}</h1>
@@ -55,7 +54,7 @@ export default class QuotesDetail extends React.Component {
                     </ul>
                     <div className="quotes_price_plot">
                         <h3>Price change</h3>
-                        <PlotFinancial data={this.state.quotes.quotes} />
+                        <PlotFinancial data={this.state.quotes.quotes} slug={this.state.quotes.slug}/>
                     </div>
                 </div>
             )

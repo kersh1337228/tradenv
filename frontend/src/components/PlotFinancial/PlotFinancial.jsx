@@ -88,8 +88,13 @@ export default class PlotFinancial extends React.Component {
                 hit: new Figure(850, 672),
                 dates: new Figure(850, 48, 0, 0.1)
             },
-            tooltips: null,
             data_range: null,
+            tooltips: null,
+            indicators: {
+                available: [],
+                active: [],
+                selected: null,
+            }
         }
         // Data range navigation
         this.drag = {
@@ -108,6 +113,11 @@ export default class PlotFinancial extends React.Component {
                 }
             }
         }
+        this.indicatorWindow = React.createRef() // Indicator window interface block
+        this.slug = props.slug  // Quotes identification slug
+        // Methods binding
+        this.initial_request = this.initial_request.bind(this)
+        this.get_indicator = this.get_indicator.bind(this)
         // UI events binding
         //// Main canvas
         this.mouseMoveHandlerMain = this.mouseMoveHandlerMain.bind(this)
@@ -118,6 +128,23 @@ export default class PlotFinancial extends React.Component {
         this.mouseMoveHandlerDates = this.mouseMoveHandlerDates.bind(this)
         this.mouseDownHandlerDates = this.mouseDownHandlerDates.bind(this)
         this.mouseUpHandlerDates = this.mouseUpHandlerDates.bind(this)
+        // Initial request
+        this.initial_request()
+    }
+    // Getting available indicators list from server
+    initial_request() {
+        let current = this
+        $.ajax({
+            url: '/quotes/plot/indicators/list/',
+            type: 'GET',
+            data: {},
+            success: function (response) {
+                let indicators = current.state.indicators
+                indicators.available = response
+                current.setState({indicators: indicators})
+            },
+            error: function (response) {}
+        })
     }
     // Financial type plot (
     //      <date:String>,
@@ -198,6 +225,25 @@ export default class PlotFinancial extends React.Component {
                 this.state.figures.volume.scale.width * 0.9,
                 volume
             )
+        }
+        // Drawing indicators
+        const indicator_data = Array.from(
+            state.indicators.active,
+            indicator => indicator.data.slice(
+                Math.floor(n * state.data_range.start),
+                Math.ceil(n * state.data_range.end)
+            )
+        )
+        for (const indicator of indicator_data) {
+            state.figures.main.context.beginPath()
+            state.figures.main.context.strokeStyle = '#ff0000'
+            state.figures.main.context.lineWidth = 1 / state.figures.main.scale.height
+            state.figures.main.context.moveTo(1.1 * state.figures.main.scale.width / 2, indicator[0])
+            for (let i = 1; i < data_amount; ++i) {
+                state.figures.main.context.lineTo((2 * i + 1.1) * state.figures.main.scale.width / 2, indicator[i])
+            }
+            state.figures.main.context.stroke()
+            state.figures.main.context.closePath()
         }
         // Drawing dates
         state.figures.dates.context.beginPath()
@@ -365,9 +411,7 @@ export default class PlotFinancial extends React.Component {
                         data_range.start : data_range.start + x_offset
                 } // Check if changes are visible (not visible on bounds)
                 if (data_range.start !== this.state.data_range.start) {
-                    this.setState({data_range: data_range}, () => {
-                        this.plot() // Redrawing plot with new data range
-                    })
+                    this.setState({data_range: data_range}, this.plot)
                 }
             }
         }
@@ -409,13 +453,84 @@ export default class PlotFinancial extends React.Component {
             this.setState(state, this.plot)
         }
     }
-
-    componentDidUpdate() {
-
+    componentDidUpdate() {}
+    // Indicator data query
+    get_indicator(event) {
+        let current = this
+        let form_data = {}
+        $(event.target.parentElement).serializeArray().map(({name, value}) => form_data[name] = value)
+        $.ajax({
+            url: `/quotes/plot/indicators/detail/${event.target.parentElement.id}/`,
+            type: 'GET',
+            data: {
+                slug: current.slug,
+                range_start: Object.keys(current.state.data)[0],
+                range_end: Object.keys(current.state.data)[Object.keys(current.state.data).length - 1],
+                args: JSON.stringify(form_data),
+            },
+            success: function (response) {
+                let indicators = current.state.indicators
+                indicators.active.push(response)
+                current.setState({indicators: indicators}, current.plot)
+            },
+            error: function (response) {}
+        })
     }
-
     render() {
         if (Object.keys(this.state.data).length > 5) {
+            const indicator_window = <div className={'plot_financial_indicator_window'}
+                                          ref={this.indicatorWindow} style={{display: 'none'}}>
+                <div>
+                    <span onClick={() => {
+                        const list = $(this.indicatorWindow.current).find('ul.indicators_available_list')
+                        if (list.css('display') === 'none') {
+                            list.show(300)
+                        } else {
+                            list.hide(300)
+                        }
+                    }}>+</span>
+                    <ul className={'indicators_available_list'}
+                        style={{display: 'none'}}>{this.state.indicators.available.map(
+                        indicator => <li key={indicator.name} onClick={() => {
+                            let indicators = this.state.indicators
+                            indicators.selected = indicator
+                            this.setState({indicators: indicators})
+                        }}>
+                            {indicator.name}
+                        </li>
+                    )}</ul>
+                    <span>Active indicators list:</span>
+                    <ul>{this.state.indicators.active.map(
+                        indicator => <li key={indicator.name} onClick={() => {
+                            let indicators = this.state.indicators
+                            indicators.selected = indicator
+                            this.setState({indicators: indicators})
+                        }}>{indicator.name}</li>
+                    )}</ul>
+                </div>
+                <div>
+                    <span>Arguments</span>
+                    {this.state.indicators.selected ?
+                        <form className={'indicator_form'} id={this.state.indicators.selected.slug}>{
+                            Object.entries(this.state.indicators.selected.args).map(
+                                ([name, value]) =>
+                                    <input key={name} name={name} placeholder={name} defaultValue={value}/>
+                            )}
+                            <div onClick={() => {
+                                let indicators = this.state.indicators
+                                indicators.selected = null
+                                this.setState({indicators: indicators})
+                            }}>Cancel</div>
+                            <div onClick={this.get_indicator}>Apply</div>
+                        </form> :
+                        <span>...</span>
+                    }
+                </div>
+                <div>
+                    <span>Style</span>
+                    <ul></ul>
+                </div>
+            </div>
             const tooltips = this.state.tooltips ?
                 <div className={'plot_financial_tooltips'}>
                     <span>Date: {this.state.tooltips.date}</span>
@@ -427,6 +542,15 @@ export default class PlotFinancial extends React.Component {
                 </div> : null
             return (
                 <>
+                    <div onClick={() => {
+                        const indicator_window = $(this.indicatorWindow.current)
+                        if (indicator_window.css('display') === 'none') {
+                            indicator_window.show(300)
+                        } else {
+                            indicator_window.hide(300)
+                        }
+                    }}>Indicators</div>
+                    {indicator_window}
                     {tooltips}
                     <div className={'plot_financial_grid'}>
                         <canvas

@@ -1,6 +1,8 @@
+import json
+
 from django.db.models import Q
 from django.shortcuts import render
-from rest_framework import generics
+from rest_framework import generics, decorators
 from rest_framework.response import Response
 from quotes.models import Quotes
 from quotes.serializers import QuotesSerializer
@@ -87,3 +89,27 @@ class QuotesListAPIView(
             return self.get(request)
         else:
             pass
+
+
+@decorators.api_view(('GET',))
+def get_quotes_plot_indicators_list(request, *args, **kwargs):
+    if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+        return Response(data=Quotes.get_indicators_list(), status=200)
+
+
+@decorators.api_view(('GET',))
+def get_quotes_plot_indicator(request, *args, **kwargs):
+    if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+        match kwargs.get('type'):
+            case 'SMA' | 'EMA':
+                return Response(Quotes.objects.get(
+                    slug=request.query_params.get('slug')
+                ).get_moving_averages(
+                    request.query_params.get('range_start'),
+                    request.query_params.get('range_end'),
+                    int(json.loads(request.query_params.get('args')).get('period_length')),
+                    json.loads(request.query_params.get('args')).get('price'),
+                    kwargs.get('type'),
+                ), status=200)
+    else:
+        pass

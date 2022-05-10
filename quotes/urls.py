@@ -1,26 +1,36 @@
 from django.urls import path
-from quotes.views import QuotesAPIView, QuotesListAPIView
+from quotes import views
 
 
 urlpatterns = [
     path(
         'list/',
-        QuotesListAPIView.as_view(),
+        views.QuotesListAPIView.as_view(),
         name='quotes_list'
     ),
     path(
         'list/search/',
-        QuotesListAPIView.as_view(),
+        views.QuotesListAPIView.as_view(),
         name='quotes_list_search'
     ),
     path(
         'list/sort/',
-        QuotesListAPIView.as_view(),
+        views.QuotesListAPIView.as_view(),
         name='quotes_list_filter'
     ),
     path(
         'detail/<slug:slug>/',
-        QuotesAPIView.as_view(),
+        views.QuotesAPIView.as_view(),
         name='quotes_detail'
     ),
+    path(
+        'plot/indicators/list/',
+        views.get_quotes_plot_indicators_list,
+        name='quotes_plot_indicators_list'
+    ),
+    path(
+        'plot/indicators/detail/<slug:type>/',
+        views.get_quotes_plot_indicator,
+        name='quotes_plot_indicator'
+    )
 ]
