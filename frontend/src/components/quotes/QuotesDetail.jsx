@@ -8,13 +8,9 @@ export default class QuotesDetail extends React.Component {
         this.state = {
             quotes: {},
         }
-        // Methods binding
-        this.initial_request = this.initial_request.bind(this)
-        // Sending initial request
-        this.initial_request()
     }
 
-    initial_request() {
+    componentDidMount() {
         let current = this
         $.ajax({
             url: `${window.location.href}`,

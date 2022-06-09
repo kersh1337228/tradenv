@@ -1,4 +1,5 @@
 import React from 'react'
+import ColorMixer from '../ColorMixer/ColorMixer'
 import './PlotFinancial.css'
 
 
@@ -116,8 +117,8 @@ export default class PlotFinancial extends React.Component {
         this.indicatorWindow = React.createRef() // Indicator window interface block
         this.slug = props.slug  // Quotes identification slug
         // Methods binding
-        this.initial_request = this.initial_request.bind(this)
         this.get_indicator = this.get_indicator.bind(this)
+        this.setIndicatorColor = this.setIndicatorColor.bind(this)
         // UI events binding
         //// Main canvas
         this.mouseMoveHandlerMain = this.mouseMoveHandlerMain.bind(this)
@@ -128,29 +129,12 @@ export default class PlotFinancial extends React.Component {
         this.mouseMoveHandlerDates = this.mouseMoveHandlerDates.bind(this)
         this.mouseDownHandlerDates = this.mouseDownHandlerDates.bind(this)
         this.mouseUpHandlerDates = this.mouseUpHandlerDates.bind(this)
-        // Initial request
-        this.initial_request()
-    }
-    // Getting available indicators list from server
-    initial_request() {
-        let current = this
-        $.ajax({
-            url: '/quotes/plot/indicators/list/',
-            type: 'GET',
-            data: {},
-            success: function (response) {
-                let indicators = current.state.indicators
-                indicators.available = response
-                current.setState({indicators: indicators})
-            },
-            error: function (response) {}
-        })
     }
     // Financial type plot (
     //      <date:String>,
     //      (<open:Number>, <high:Number>, <low:Number>, <close:Number>, <volume:Number>)
     // )
-    plot(callback) {
+    plot() {
         let state = this.state
         // Clear
         state.figures.main.context.clearRect(0, 0, state.figures.main.get_width(), state.figures.main.get_height())
@@ -168,7 +152,13 @@ export default class PlotFinancial extends React.Component {
             )
         )
         // Rescaling
-        const [lows, highs, volumes] = [
+        const active_indicators_data = [].concat(...Array.from(
+            state.indicators.active, indicator => indicator.data.slice(
+                Math.floor(n * state.data_range.start),
+                Math.ceil(n * state.data_range.end)
+            )  // Active indicators data
+        )).filter(value => value !== null)
+        const [lows, highs, volumes] = [  // Quotes data
             Array.from(Object.values(data), obj => obj.low),
             Array.from(Object.values(data), obj => obj.high),
             Array.from(Object.values(data), obj => obj.volume),
@@ -176,7 +166,11 @@ export default class PlotFinancial extends React.Component {
         //// Main
         state.figures.main.scale.height = (
             state.figures.main.get_height() * (1 - state.figures.main.padding.bottom - state.figures.main.padding.top)) /
-            Math.abs(Math.max.apply(null, highs) - Math.min.apply(null, lows))
+            Math.abs(Math.max.apply(null, highs.concat(
+                active_indicators_data
+            )) - Math.min.apply(null, lows.concat(
+                active_indicators_data
+            )))
         state.figures.main.scale.width = state.figures.volume.scale.width = (
             state.figures.main.get_width() * (1 - state.figures.main.padding.left - state.figures.main.padding.right)) / (highs.length)
         //// Volume
@@ -228,19 +222,23 @@ export default class PlotFinancial extends React.Component {
         }
         // Drawing indicators
         const indicator_data = Array.from(
-            state.indicators.active,
-            indicator => indicator.data.slice(
-                Math.floor(n * state.data_range.start),
-                Math.ceil(n * state.data_range.end)
-            )
+            state.indicators.active.filter(indicator => indicator.active),
+            indicator => [
+                indicator.data.slice(
+                    Math.floor(n * state.data_range.start),
+                    Math.ceil(n * state.data_range.end)
+                ), indicator.style
+            ]
         )
-        for (const indicator of indicator_data) {
+        for (const [data, style] of indicator_data) {
             state.figures.main.context.beginPath()
-            state.figures.main.context.strokeStyle = '#ff0000'
+            state.figures.main.context.strokeStyle = style.color
             state.figures.main.context.lineWidth = 1 / state.figures.main.scale.height
-            state.figures.main.context.moveTo(1.1 * state.figures.main.scale.width / 2, indicator[0])
-            for (let i = 1; i < data_amount; ++i) {
-                state.figures.main.context.lineTo((2 * i + 1.1) * state.figures.main.scale.width / 2, indicator[i])
+            let i = data.indexOf(data.find(element => element !== null))
+            state.figures.main.context.moveTo((2 * i + 1.1) * state.figures.main.scale.width / 2, data[i])
+            while (i < data_amount) {
+                ++i
+                state.figures.main.context.lineTo((2 * i + 1.1) * state.figures.main.scale.width / 2, data[i])
             }
             state.figures.main.context.stroke()
             state.figures.main.context.closePath()
@@ -283,7 +281,6 @@ export default class PlotFinancial extends React.Component {
         // Restoring context
         state.figures.main.context.restore()
         state.figures.volume.context.restore()
-        this.setState(state, callback)
     }
     // Show translucent grid
     show_grid(figure) {
@@ -334,9 +331,7 @@ export default class PlotFinancial extends React.Component {
                     data_range.end = data_range.start + (this.state.data_range.end - this.state.data_range.start)
                 } // Check if changes are visible (not visible on bounds)
                 if (data_range.start !== this.state.data_range.start && data_range.end !== this.state.data_range.end) {
-                    this.setState({data_range: data_range}, () => {
-                        this.plot() // Redrawing plot with new data range
-                    })
+                    this.setState({data_range: data_range}, this.plot)
                 }
             }
         }
@@ -371,7 +366,7 @@ export default class PlotFinancial extends React.Component {
             low: low,
             close: close,
             volume: volume,
-            indicators: this.state.indicators.active.map(
+            indicators: this.state.indicators.active.filter(indicator => indicator.active).map(
                 indicator => Object.fromEntries(
                     [
                         ['displayed_name', indicator.displayed_name],
@@ -442,42 +437,48 @@ export default class PlotFinancial extends React.Component {
     // After-render plot building
     componentDidMount() {
         if (Object.keys(this.state.data).length > 5) {
-            let state = this.state
-            // Setting contexts
-            state.figures.main.context = state.figures.main.canvas.current.getContext('2d')
-            state.figures.volume.context = state.figures.volume.canvas.current.getContext('2d')
-            state.figures.hit.context = state.figures.hit.canvas.current.getContext('2d')
-            state.figures.dates.context = state.figures.dates.canvas.current.getContext('2d')
-            // Setting windows and canvases sizes
-            state.figures.main.set_window()
-            state.figures.volume.set_window()
-            state.figures.hit.set_window()
-            state.figures.dates.set_window()
-            // Setting basic observed data range
-            const data_amount = Object.keys(state.data).length
-            const default_data_amount = 150
-            state.data_range = {
-                start: 1 - (data_amount <= default_data_amount ? data_amount : default_data_amount) / data_amount,
-                end: 1
-            }
-            // Applying changes and calling drawing method
-            this.setState(state, this.plot)
+            let current = this
+            $.ajax({
+                url: '/quotes/plot/indicators/list/',
+                type: 'GET',
+                data: {},
+                success: function (response) {
+                    current.state.indicators.available = response
+                    // Setting contexts
+                    current.state.figures.main.context = current.state.figures.main.canvas.current.getContext('2d')
+                    current.state.figures.volume.context = current.state.figures.volume.canvas.current.getContext('2d')
+                    current.state.figures.hit.context = current.state.figures.hit.canvas.current.getContext('2d')
+                    current.state.figures.dates.context = current.state.figures.dates.canvas.current.getContext('2d')
+                    // Setting windows and canvases sizes
+                    current.state.figures.main.set_window()
+                    current.state.figures.volume.set_window()
+                    current.state.figures.hit.set_window()
+                    current.state.figures.dates.set_window()
+                    // Setting basic observed data range
+                    const data_amount = Object.keys(current.state.data).length
+                    const default_data_amount = 150
+                    current.state.data_range = {
+                        start: 1 - (data_amount <= default_data_amount ? data_amount : default_data_amount) / data_amount,
+                        end: 1
+                    }
+                    // Applying changes and calling drawing method
+                    current.setState(current.state, current.plot)
+                },
+                error: function (response) {}
+            })
         }
     }
-    componentDidUpdate() {}
     // Indicator data query
     get_indicator(event) {
         let current = this
-        let form_data = {}
-        $(event.target.parentElement).serializeArray().map(({name, value}) => form_data[name] = value)
         $.ajax({
-            url: `/quotes/plot/indicators/detail/${event.target.parentElement.id}/`,
+            url: `/quotes/plot/indicators/detail/${this.state.indicators.selected.name}/`,
             type: 'GET',
             data: {
                 slug: current.slug,
                 range_start: Object.keys(current.state.data)[0],
                 range_end: Object.keys(current.state.data)[Object.keys(current.state.data).length - 1],
-                args: JSON.stringify(form_data),
+                args: JSON.stringify(Object.fromEntries((new FormData(event.target.parentElement)).entries())),
             },
             success: function (response) {
                 let indicators = current.state.indicators
@@ -490,10 +491,20 @@ export default class PlotFinancial extends React.Component {
                 } else {
                     indicators.active.push(response)
                 }
+                indicators.selected = response
                 current.setState({indicators: indicators}, current.plot)
             },
             error: function (response) {}
         })
+    }
+    // ColorMixer component callback
+    setIndicatorColor(color) {
+        let indicators = this.state.indicators
+        indicators.selected.style.color = color
+        indicators.active[indicators.active.indexOf(indicators.active.find(
+            indicator => indicator.displayed_name === indicators.selected.displayed_name
+        ))].style.color = color
+        this.setState({indicators: indicators}, this.plot)
     }
     render() {
         if (Object.keys(this.state.data).length > 5) {
@@ -530,13 +541,32 @@ export default class PlotFinancial extends React.Component {
                                 indicators.selected = indicator
                                 this.setState({indicators: indicators})
                             })
-                        }}>{indicator.displayed_name}</li>
+                        }}><ul>
+                            <li>{indicator.displayed_name}</li>
+                            <li onClick={() => {
+                                let indicators = this.state.indicators
+                                indicators.active[indicators.active.indexOf(indicators.active.find(
+                                    i => i.displayed_name === indicator.displayed_name
+                                ))].active = !indicator.active
+                                this.setState({indicators: indicators}, this.plot)
+                            }}>{indicator.active ? 'Hide' : 'Show'}</li>
+                            <li onClick={() => {
+                                let indicators = this.state.indicators
+                                indicators.active.splice(indicators.active.indexOf(indicators.active.find(
+                                    i => i.displayed_name === indicator.displayed_name
+                                )), 1)
+                                if (indicators.selected.displayed_name === indicator.displayed_name) {
+                                    indicators.selected = null
+                                }
+                                this.setState({indicators: indicators}, this.plot)
+                            }}>Remove</li>
+                        </ul></li>
                     )}</ul>
                 </div>
                 <div>
                     <span>Arguments</span>
                     {this.state.indicators.selected ?
-                        <form className={'indicator_form'} id={this.state.indicators.selected.name}>{
+                        <form className={'indicator_form'}>{
                             Object.entries(this.state.indicators.selected.args).map(
                                 ([name, value]) =>
                                     <input key={name} name={name} placeholder={name} defaultValue={value}/>
@@ -553,7 +583,14 @@ export default class PlotFinancial extends React.Component {
                 </div>
                 <div>
                     <span>Style</span>
-                    <ul></ul>
+                    {this.state.indicators.selected ? this.state.indicators.selected.style ?
+                        <ul>
+                            <li>
+                                <ColorMixer default={this.state.indicators.selected.style.color}
+                                setColor={this.setIndicatorColor} />
+                            </li>
+                        </ul> : <span>...</span> : <span>...</span>
+                    }
                 </div>
             </div>
             const tooltips = this.state.tooltips ?

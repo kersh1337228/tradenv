@@ -103,7 +103,7 @@ def get_quotes_plot_indicators_list(request, *args, **kwargs):
 def get_quotes_plot_indicator(request, *args, **kwargs):
     if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
         match kwargs.get('type'):
-            case 'SMA' | 'EMA':
+            case 'SMA' | 'EMA' | 'VMA':
                 return Response(Quotes.objects.get(
                     slug=request.query_params.get('slug')
                 ).get_moving_averages(

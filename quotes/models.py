@@ -112,7 +112,6 @@ class Quotes(models.Model):
             price : str='close',
             type : str='SMA'
     ) -> dict:
-        print(range_start, range_end, period_length, price, type)
         # Preparing quotes data to by-index access
         dates = list(self.quotes)
         start, end = dates.index(range_start), dates.index(range_end)
@@ -124,7 +123,7 @@ class Quotes(models.Model):
             start += 1
         match type:
             case 'SMA':
-                result.append(reduce(  # Initial value in null point (date = start)
+                result.append(reduce(
                     lambda part_sum, next: part_sum + next[price],
                     period_quotes[start - period_length + 1 : start + 1], 0
                 ) / period_length)
@@ -137,9 +136,9 @@ class Quotes(models.Model):
                     )  # SMA(i,n) = SMA(i-1, n) + (P(i) - P(i-n))/n
             case 'EMA':  # EMA
                 smoothing_factor = 1 - 2 / (period_length + 1)
-                result.append(  # Initial value in null point (date = start)
+                result.append(
                     sum([pow(smoothing_factor, start - k) / (1 - smoothing_factor) *
-                         period_quotes[start][price]
+                         period_quotes[k][price]
                          for k in range(start - period_length + 1, start + 1)]) /
                     sum([pow(smoothing_factor, start - k) / (1 - smoothing_factor)
                          for k in range(start - period_length + 1, start + 1)])
@@ -148,8 +147,22 @@ class Quotes(models.Model):
                     result.append(  # Iteration formula based
                         (1 - smoothing_factor) * period_quotes[date][price] + smoothing_factor * result[-1]
                     )  # EMA(i,n) = 2/(n+1) * P(i) + (1 - 2/(n+1)) * EMA(i-1,n)
-            case 'volumetric':  # VMA
-                pass
+            case 'VMA':  # VMA
+                result.append(
+                    sum([period_quotes[k][price] * period_quotes[k]['volume']
+                         for k in range(start - period_length + 1, start + 1)]) /
+                    sum([period_quotes[k]['volume'] for k in range(start - period_length + 1, start + 1)])
+                )
+                for date in range(start + 1, end + 1):
+                    volume_sum = sum([period_quotes[k]['volume'] for k in range(date - period_length + 1, date + 1)])
+                    result.append(  # Iteration formula based
+                        result[-1] * (1 + (
+                                period_quotes[date - period_length]['volume'] - period_quotes[date]['volume']
+                        ) / volume_sum) - (
+                                period_quotes[date - period_length][price] * period_quotes[date - period_length]['volume'] -
+                                period_quotes[date][price] * period_quotes[date]['volume']
+                        ) / volume_sum
+                    )
         return {
             'name': type,
             'displayed_name': f'{type} {period_length} {price}',
@@ -157,7 +170,11 @@ class Quotes(models.Model):
                 'period_length': period_length,
                 'price': price
             },
-            'data': result
+            'data': result,
+            'style': {
+                'color': 'rgba(0, 0, 0, 1)'  # JS format color
+            },
+            'active': True,
         }
 
     @staticmethod
@@ -165,17 +182,25 @@ class Quotes(models.Model):
         return [
             {
                 'name': 'SMA',
-                'displayed_name': 'SMA 200 close',
+                'displayed_name': 'SMA 20 close',
                 'args': {
-                    'period_length': 200,
+                    'period_length': 20,
                     'price': 'close'
                 }
             },
             {
                 'name': 'EMA',
-                'displayed_name': 'EMA 200 close',
+                'displayed_name': 'EMA 20 close',
                 'args': {
-                    'period_length': 200,
+                    'period_length': 20,
+                    'price': 'close'
+                }
+            },
+            {
+                'name': 'VMA',
+                'displayed_name': 'VMA 20 close',
+                'args': {
+                    'period_length': 20,
                     'price': 'close'
                 }
             }

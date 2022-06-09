@@ -15,6 +15,7 @@ Including another URLconf
 """
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.shortcuts import render
 from django.urls import path, include
 from quotes_analysis import settings
 
@@ -30,6 +31,12 @@ urlpatterns = [
     path('portfolio/', include('portfolio.urls')),
     path('strategy/', include('strategy.urls')),
     path('log/', include('log.urls')),
+    path(
+        '<path:resourse>', lambda request, *args, **kwargs: render(
+            request=request,
+            template_name='index.html',
+        )
+    ),
 ]
 
 
