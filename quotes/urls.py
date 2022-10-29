@@ -1,36 +1,37 @@
 from django.urls import path
 from quotes import views
+from analysis.views import GenericView
 
 
 urlpatterns = [
     path(
-        'list/',
-        views.QuotesListAPIView.as_view(),
+        'list',
+        GenericView.as_view(),
         name='quotes_list'
     ),
     path(
-        'list/search/',
-        views.QuotesListAPIView.as_view(),
-        name='quotes_list_search'
-    ),
-    path(
-        'list/sort/',
-        views.QuotesListAPIView.as_view(),
-        name='quotes_list_filter'
-    ),
-    path(
-        'detail/<slug:slug>/',
-        views.QuotesAPIView.as_view(),
+        'detail/<slug:symbol>',
+        views.QuotesView.as_view(),
         name='quotes_detail'
     ),
     path(
-        'plot/indicators/list/',
-        views.get_quotes_plot_indicators_list,
-        name='quotes_plot_indicators_list'
+        'api/list',
+        views.QuotesListAPIView.as_view(),
+        name='quotes_api_list'
     ),
     path(
-        'plot/indicators/detail/<slug:type>/',
+        'api/detail/<slug:symbol>',
+        views.QuotesAPIView.as_view(),
+        name='quotes_api_detail'
+    ),
+    path(
+        'api/plot/indicators/list',
+        views.get_quotes_plot_indicators_list,
+        name='quotes_api_plot_indicators_list'
+    ),
+    path(
+        'api/plot/indicators/detail/<slug:type>',
         views.get_quotes_plot_indicator,
-        name='quotes_plot_indicator'
+        name='quotes_api_plot_indicator_detail'
     )
 ]

@@ -1,60 +1,222 @@
 import datetime
-import pandas
 import copy
+import numpy as np
+import pandas as pd
+from itertools import combinations
+from typing import Callable, Iterable, Literal
+import quotes.indicators as ind
 
 
-# Simple strategy buy or sell
-def simple_buy_or_sell(self, portfolio, range_start, range_end):
-    # Creating convenient date range
-    date_range = pandas.date_range(
-        datetime.datetime.strptime(range_start, '%Y-%m-%d'),
-        datetime.datetime.strptime(range_end, '%Y-%m-%d'),
+
+async def simple_periodic(
+        portfolio,
+        range_start: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
+        range_end: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
+        long_limit: int = 3,
+        short_limit: int = 0,
+        period_length: int = 3,
+):
+    portfolio_quotes = await portfolio.get_all_quotes(
+        range_start, range_end, 'dataframe', True
     )
-    # Getting portfolio stocks quotes for given period
-    portfolio_quotes = portfolio.get_all_quotes(range_start, range_end, 'analysis')
-    # Counting general portfolio cost
-    def set_cost(log):
-        return log['balance'] + sum([
-            amount * portfolio_quotes[name][
-                datetime.datetime.strptime(log['date'], '%Y-%m-%d')
-            ]['close']
-            for name, amount in log['stocks'].items()
-        ])
-    # Initial log
-    logs = [{
-        'date': date_range[2].strftime('%Y-%m-%d'),
-        'balance': portfolio.balance,
-        'stocks': dict.fromkeys(portfolio_quotes.keys(), 0),
-        'cost': portfolio.balance,
-    }]
-    # Logging through dates and portfolio stocks
-    for date in range(len(date_range) - 3):  # add date offset
-        log = copy.deepcopy(logs[-1])  # current log
-        for name, period_quotes in portfolio_quotes.items():
-            for delta in range(3):  # strategy research interval
-                # Comparison quotes
-                quotes = period_quotes[date_range[date + delta]]['close']
-                # Current date quotes
-                current = period_quotes[date_range[date + 3]]['close']
-                # Overall stocks amount in portfolio
-                stocks_amount = sum(log['stocks'].values())
-                # Buy signal
+    symbols, date_range = portfolio_quotes.index.levels
+    logs = pd.DataFrame(
+        data={
+            'balance': (portfolio.balance,),
+            'value': (portfolio.balance,),
+            'stocks': (pd.Series(index=symbols, data=0),),
+        },
+        index=(date_range[period_length - 1],)
+    )
+    for date in date_range[:-period_length]:
+        log = copy.deepcopy(logs.iloc[-1])
+        log['stocks'] = log['stocks'].copy()
+        current_date = date + period_length * date_range.freq
+        for symbol in symbols:
+            period_quotes = portfolio_quotes.loc[symbol, 'close']
+            current = period_quotes.loc[current_date]
+            for delta in range(period_length):
+                prev = period_quotes.loc[date + delta * date_range.freq]
+                stocks_amount = log['stocks'].sum()
                 if all((
-                    current > quotes,
-                    stocks_amount + 1 <= self.long_limit,
+                    current > prev,
+                    stocks_amount + 1 <= long_limit,
                     log['balance'] >= current
                 )):
-                    log['stocks'][name] += 1
+                    log['stocks'][symbol] += 1
                     log['balance'] -= current
-                # Sell signal
                 elif all((
-                        current < quotes,
-                        stocks_amount - 1 >= -self.short_limit
+                    current < prev,
+                    stocks_amount - 1 >= -short_limit
                 )):
-                    log['stocks'][name] -= 1
+                    log['stocks'][symbol] -= 1
                     log['balance'] += current
-        # Finishing log
-        log['date'] = date_range[date + 3].strftime('%Y-%m-%d')
-        log['cost'] = set_cost(log)
-        logs.append(log)
-    return logs
+        log['value'] = log['balance'] + (
+            log['stocks'].values * portfolio_quotes.loc[
+                (slice(None), current_date), 'close'
+            ].values
+        ).sum()
+        logs.loc[current_date] = log
+    return logs.asfreq(date_range.freq)
+
+
+async def ma_levels(
+        portfolio,
+        periods: Iterable[int],
+        indicator: Literal['sma', 'ema', 'vwma'],
+        range_start: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
+        range_end: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
+        long_limit: int = 3,
+        short_limit: int = 0,
+):
+    indicator = getattr(ind, indicator)
+    def indicator_wrapper(price, period):
+        def wrapped(data):
+            return indicator(data, price, period)
+        return wrapped
+    assigns = {
+        f'{indicator.__name__}{period}':
+            indicator_wrapper('close', period)
+        for period in periods
+    }
+    portfolio_quotes = (await portfolio.get_all_quotes(
+        range_start, range_end, 'dataframe', True
+    )).groupby(level=0, group_keys=False).apply(
+        lambda symbol: symbol.assign(**assigns)
+    )
+    symbols, date_range = portfolio_quotes.index.levels
+    skip = min(periods) - (  # Days amount with no moving averages
+        pd.Timestamp(range_start) - portfolio_quotes.index[0][1]
+    ).days
+    logs = pd.DataFrame(
+        data={
+            'balance': (portfolio.balance,),
+            'value': (portfolio.balance,),
+            'stocks': (pd.Series(index=symbols, data=0),),
+        },
+        index=(date_range[skip] - date_range.freq,)
+    )
+    for date in date_range[skip:]:
+        log = copy.deepcopy(logs.iloc[-1])
+        log['stocks'] = log['stocks'].copy()
+        for symbol in symbols:
+            period_quotes = portfolio_quotes.loc[(symbol, date)]
+            for level in assigns.keys():
+                close_price, level_price = period_quotes[['close', level]]
+                if level_price:
+                    stocks_amount = log['stocks'].sum()
+                    if all((
+                        close_price > level_price,
+                        stocks_amount + 1 <= long_limit,
+                        log['balance'] >= close_price
+                    )):
+                        log['stocks'][symbol] += 1
+                        log['balance'] -= close_price
+                    elif all((
+                        close_price < level_price,
+                        stocks_amount - 1 >= -short_limit
+                    )):
+                        log['stocks'][symbol] -= 1
+                        log['balance'] += close_price
+        log['value'] = log['balance'] + (
+            log['stocks'].values * portfolio_quotes.loc[
+                (slice(None), date), 'close'
+            ].values
+        ).sum()
+        logs.loc[date] = log
+    return logs.asfreq(date_range.freq)
+
+
+async def mutual_ma_positions(
+        portfolio,
+        periods: Iterable[int],
+        indicator: Literal['sma', 'ema', 'vwma'],
+        range_start: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
+        range_end: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
+        long_limit: int = 3,
+        short_limit: int = 0,
+):
+    indicator = getattr(ind, indicator)
+    def indicator_wrapper(price, period):
+        def wrapped(data):
+            return indicator(data, price, period)
+        return wrapped
+
+    periods = tuple(sorted(periods))
+    assigns = {
+        f'{indicator.__name__}{period}':
+            indicator_wrapper('close', period)
+        for period in periods
+    }
+    portfolio_quotes = (await portfolio.get_all_quotes(
+        range_start, range_end, 'dataframe', True
+    )).groupby(level=0, group_keys=False).apply(
+        lambda symbol: symbol.assign(**assigns)
+    )
+    symbols, date_range = portfolio_quotes.index.levels
+    skip = periods[1] - (  # Days amount with no moving averages
+        pd.Timestamp(range_start) - portfolio_quotes.index[0][1]
+    ).days
+    logs = pd.DataFrame(
+        data={
+            'balance': (portfolio.balance,),
+            'value': (portfolio.balance,),
+            'stocks': (pd.Series(index=symbols, data=0),),
+        },
+        index=(date_range[skip] - date_range.freq,)
+    )
+    levels_pairs = list(combinations(assigns, 2))
+    for date in date_range[skip:]:
+        log = copy.deepcopy(logs.iloc[-1])
+        log['stocks'] = log['stocks'].copy()
+        for symbol in symbols:
+            period_quotes = portfolio_quotes.loc[(symbol, date)]
+            for l1, l2 in levels_pairs:
+                close_price, l1_price, l2_price = period_quotes[['close', l1, l2]]
+                if l1_price and l2_price:
+                    stocks_amount = log['stocks'].sum()
+                    if all((
+                        l1_price > l2_price,
+                        stocks_amount + 1 <= long_limit,
+                        log['balance'] >= close_price
+                    )):
+                        log['stocks'][symbol] += 1
+                        log['balance'] -= close_price
+                    elif all((
+                        l1_price < l2_price,
+                        stocks_amount - 1 >= -short_limit
+                    )):
+                        log['stocks'][symbol] -= 1
+                        log['balance'] += close_price
+        log['value'] = log['balance'] + (
+            log['stocks'].values * portfolio_quotes.loc[
+                (slice(None), date), 'close'
+            ].values
+        ).sum()
+        logs.loc[date] = log
+    return logs.asfreq(date_range.freq)
+
+
+choices = [  # Frond-end strategies representations
+    {
+        'verbose_name': 'Simple periodic',
+        'alias': 'simple_periodic',
+        'args': {
+            'period_length': 'int'
+        }
+    }, {
+        'verbose_name': 'Moving Averages levels',
+        'alias': 'ma_levels',
+        'args': {
+            'periods': 'list[int]',
+            'indicator': ('sma', 'ema', 'vwma')
+        }
+    }, {
+        'verbose_name': 'Mutual Moving Averages positions',
+        'alias': 'mutual_ma_positions',
+        'args': {
+            'periods': 'list[int]',
+            'indicator': ('sma', 'ema', 'vwma')
+        }
+    }
+]

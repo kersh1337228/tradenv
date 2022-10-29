@@ -115,7 +115,7 @@ export default class PlotFinancial extends React.Component {
             }
         }
         this.indicatorWindow = React.createRef() // Indicator window interface block
-        this.slug = props.slug  // Quotes identification slug
+        this.symbol = props.symbol  // Quotes id
         // Methods binding
         this.get_indicator = this.get_indicator.bind(this)
         this.setIndicatorColor = this.setIndicatorColor.bind(this)
@@ -136,10 +136,22 @@ export default class PlotFinancial extends React.Component {
     // )
     plot() {
         let state = this.state
-        // Clear
-        state.figures.main.context.clearRect(0, 0, state.figures.main.get_width(), state.figures.main.get_height())
-        state.figures.volume.context.clearRect(0, 0, state.figures.volume.get_width(), state.figures.volume.get_height())
-        state.figures.dates.context.clearRect(0, 0, state.figures.dates.get_width(), state.figures.dates.get_height())
+        // Clear canvases
+        state.figures.main.context.clearRect(
+            0, 0,
+            state.figures.main.get_width(),
+            state.figures.main.get_height()
+        )
+        state.figures.volume.context.clearRect(
+            0, 0,
+            state.figures.volume.get_width(),
+            state.figures.volume.get_height()
+        )
+        state.figures.dates.context.clearRect(
+            0, 0,
+            state.figures.dates.get_width(),
+            state.figures.dates.get_height()
+        )
         // Drawing grid on plot canvases
         this.show_grid(state.figures.main)
         this.show_grid(state.figures.volume)
@@ -233,7 +245,7 @@ export default class PlotFinancial extends React.Component {
         for (const [data, style] of indicator_data) {
             state.figures.main.context.beginPath()
             state.figures.main.context.strokeStyle = style.color
-            state.figures.main.context.lineWidth = 1 / state.figures.main.scale.height
+            state.figures.main.context.lineWidth = 2 / state.figures.main.scale.height
             let i = data.indexOf(data.find(element => element !== null))
             state.figures.main.context.moveTo((2 * i + 1.1) * state.figures.main.scale.width / 2, data[i])
             while (i < data_amount) {
@@ -439,7 +451,7 @@ export default class PlotFinancial extends React.Component {
         if (Object.keys(this.state.data).length > 5) {
             let current = this
             $.ajax({
-                url: '/quotes/plot/indicators/list/',
+                url: '/quotes/api/plot/indicators/list',
                 type: 'GET',
                 data: {},
                 success: function (response) {
@@ -471,11 +483,14 @@ export default class PlotFinancial extends React.Component {
     // Indicator data query
     get_indicator(event) {
         let current = this
+        console.log(event, this.state.indicators.selected)
         $.ajax({
-            url: `/quotes/plot/indicators/detail/${this.state.indicators.selected.name}/`,
+            url: `/quotes/api/plot/indicators/detail/${
+                this.state.indicators.selected.alias
+            }`,
             type: 'GET',
             data: {
-                slug: current.slug,
+                symbol: current.symbol,
                 range_start: Object.keys(current.state.data)[0],
                 range_end: Object.keys(current.state.data)[Object.keys(current.state.data).length - 1],
                 args: JSON.stringify(Object.fromEntries((new FormData(event.target.parentElement)).entries())),
@@ -508,8 +523,11 @@ export default class PlotFinancial extends React.Component {
     }
     render() {
         if (Object.keys(this.state.data).length > 5) {
-            const indicator_window = <div className={'plot_financial_indicator_window'}
-                                          ref={this.indicatorWindow} style={{display: 'none'}}>
+            const indicator_window = <div
+                className={'plot_financial_indicator_window'}
+                ref={this.indicatorWindow}
+                style={{display: 'none'}}
+            >
                 <div>
                     <span onClick={() => {
                         const list = $(this.indicatorWindow.current).find('ul.indicators_available_list')
@@ -521,7 +539,7 @@ export default class PlotFinancial extends React.Component {
                     }}>+</span>
                     <ul className={'indicators_available_list'}
                         style={{display: 'none'}}>{this.state.indicators.available.map(
-                        indicator => <li key={indicator.name} onClick={() => {
+                        indicator => <li key={indicator.alias} onClick={() => {
                             let indicators = this.state.indicators
                             indicators.selected = null
                             this.setState({indicators: indicators}, () => {
@@ -529,7 +547,7 @@ export default class PlotFinancial extends React.Component {
                                 this.setState({indicators: indicators})
                             })
                         }}>
-                            {indicator.name}
+                            {indicator.verbose_name}
                         </li>
                     )}</ul>
                     <span>Active indicators list:</span>
@@ -602,7 +620,10 @@ export default class PlotFinancial extends React.Component {
                     <span>Close: {this.state.tooltips.close}</span>
                     <span>Volume: {this.state.tooltips.volume}</span>
                     {this.state.tooltips.indicators.map(
-                        indicator => <span key={indicator.displayed_name}>{indicator.displayed_name}: {indicator.data}</span>
+                        indicator =>
+                            <span key={indicator.displayed_name}>
+                                {indicator.displayed_name}: {indicator.data}
+                            </span>
                     )}
                 </div> : null
             return (
@@ -652,7 +673,11 @@ export default class PlotFinancial extends React.Component {
                 </>
             )
         } else {
-            return (<div className={'plot_financial_error_message'}>Not enough data to observe</div>)
+            return (
+                <div className={'plot_financial_error_message'}>
+                    Not enough data to observe.
+                </div>
+            )
         }
     }
 }

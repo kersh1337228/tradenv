@@ -13,14 +13,15 @@ export default class LogDetail extends React.Component {
         }
         // Methods binding
         this.initial_request = this.initial_request.bind(this)
-        // Initial request
-        this.initial_request()
     }
 
     initial_request() {
         let current = this
+        const slug = window.location.href.match(
+            /\/log\/detail\/([\w]+)/
+        )[1]
         $.ajax({
-            url: `${window.location.href}`,
+            url: `/log/api/detail/${slug}`,
             type: 'GET',
             data: {},
             success: function (response) {
@@ -30,6 +31,10 @@ export default class LogDetail extends React.Component {
             },
             error: function (response) {}
         })
+    }
+
+    componentDidMount() {
+        this.initial_request()
     }
 
     render() {
@@ -71,6 +76,7 @@ export default class LogDetail extends React.Component {
                 </div>
             )
         } catch (error) {
+            console.log(error)
             return (<div className="log_detail">Loading...</div>)
         }
 

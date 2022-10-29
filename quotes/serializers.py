@@ -1,18 +1,30 @@
 from rest_framework import serializers
-from quotes.models import Quotes, Stock
+from quotes.models import StockQuotes, StockInstance
 
 
-class QuotesSerializer(serializers.ModelSerializer):
+class StockQuotesSerializer(serializers.ModelSerializer):  # Full data
     tendency = serializers.ReadOnlyField(source='get_tendency')
+    quotes = serializers.ReadOnlyField(source='get_quotes')
 
     class Meta:
-        model = Quotes
+        model = StockQuotes
         fields = '__all__'
 
 
-class StockSerializer(serializers.ModelSerializer):
-    origin = QuotesSerializer(read_only=True)
+class StockQuotesSerializerLite(serializers.ModelSerializer):  # No expensive quotes field
+    tendency = serializers.ReadOnlyField(source='get_tendency')
+
+    def to_internal_value(self, data):
+        return super().to_internal_value(data)
 
     class Meta:
-        model = Stock
+        model = StockQuotes
+        exclude = ('quotes',)
+
+
+class StockInstanceSerializer(serializers.ModelSerializer):
+    quotes = StockQuotesSerializerLite(read_only=True)
+
+    class Meta:
+        model = StockInstance
         fields = '__all__'

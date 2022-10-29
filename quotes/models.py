@@ -1,32 +1,51 @@
-import requests
 from django.db import models
+from django.http import Http404
 import datetime
-import pandas
-from functools import reduce
+import time
+import requests
+import pandas as pd
+import aiohttp
+from . import indicators as ind
 
 
-'''Economic market instrument, representing stocks,
- obligations, currencies, etc. 
- Contains symbol, main quotes for certain period, price plot.'''
+class DataFrameField(models.JSONField):  # Custom field to store quotes as pandas.DataFrame
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def from_db_value(self, value: None | str, expression, connection):
+        if not value:
+            return pd.DataFrame()
+        return pd.read_json(
+            super().from_db_value(value, expression, connection)
+        )
+
+    def to_python(self, value: pd.DataFrame | None | str):
+        if isinstance(value, pd.DataFrame):
+            return value
+        if not value:
+            return pd.DataFrame()
+        return pd.DataFrame(super().to_python(value))
+
+    def get_prep_value(self, value: pd.DataFrame):
+        return super().get_prep_value(value.to_json())
 
 
-class Quotes(models.Model):
+class StockQuotes(models.Model):  # Economic market instrument information storage.
     symbol = models.CharField(
         max_length=255,
         unique=True,
         blank=False,
-        null=False
+        null=False,
+        primary_key=True,
+        db_index=True
     )
     name = models.CharField(
         max_length=255,
-        unique=True,
-        blank=False,
-        null=False
+        unique=False,
+        blank=True,
+        null=True
     )
-    quotes = models.JSONField()
-    slug = models.SlugField(
-        max_length=255,
-        unique=True,
+    quotes = DataFrameField(
         blank=False,
         null=False
     )
@@ -34,188 +53,98 @@ class Quotes(models.Model):
     # API key for alpha_vantage api
     api_key = 'J7JRRVLFS9HZFPBY'
 
-    # Returns closest quotes on date
-    def __try_get_quotes(self, date):
-        quotes = self.quotes.get(date.strftime('%Y-%m-%d'), None)
-        return quotes if quotes else self.__try_get_quotes(date - datetime.timedelta(days=1))
-
-    # Returns quotes for certain period
-    def get_quotes_for_range(self, range_start: datetime.date, range_end: datetime.date, type: str ='standard') -> dict:
-        return dict(list(self.quotes.items())[
-            list(self.quotes).index(range_start.strftime('%Y-%m-%d')) : list(self.quotes).index(range_end.strftime('%Y-%m-%d')) + 1
-        ]) if type == 'standard' else {
-            date: self.__try_get_quotes(date)
-            for date in pandas.date_range(range_start, range_end)
-        }
-    # Method to parse quotes of the instrument by its symbol
-    # and then create a database note and model instance
-    @staticmethod
-    def add_quote_by_symbol(symbol: str, name: str, slug: str, period: str = 'DAILY'):
-        # Parsing quotes data
-        meta_data, data = requests.get(
-            url='https://www.alphavantage.co/query',
-            params={
-                'function': f'TIME_SERIES_{period}',
-                'symbol': symbol,
-                'outputsize': 'full',
-                'datatype': 'json',
-                'apikey': Quotes.api_key,
-            }
-        ).json().values()
-        quotes = last = {}  # Formatting quotes
-        for date in pandas.date_range(
-            start=datetime.datetime.strptime(list(data)[-1], '%Y-%m-%d'),
-            end=datetime.datetime.strptime(list(data)[0], '%Y-%m-%d'),
-            freq='D'
-        ):
-            key = date.strftime('%Y-%m-%d')
-            if data.get(key, None):
-                last = {
-                    'open': float(data[key]['1. open']),
-                    'high': float(data[key]['2. high']),
-                    'low': float(data[key]['3. low']),
-                    'close': float(data[key]['4. close']),
-                    'volume': int(data[key]['5. volume']),
-                    'non-trading': False
-                }
-            else:
-                last['non-trading'] = True
-            quotes[key] = last
-        # Adding quotes data to the database
-        quote = Quotes.objects.create(
-            symbol=symbol,
-            name=name,
-            quotes=quotes,
-            slug=slug
-        )  # Building ohlc quotes plot
-        return quote
+    async def update_quotes(self):  # Getting fresh data on stock quotes
+        async with aiohttp.ClientSession() as session:  # Establishing request session
+            async with session.get(  # Making get request
+                    url=f'https://query1.finance.yahoo.com/v8/finance/chart/{self.symbol}',
+                    params={
+                        'period1': 0,
+                        'period2': int(time.mktime(datetime.datetime.now().timetuple())),
+                        'interval': '1d',
+                        'frequency': '1d',
+                        'events': 'history'
+                    },
+                    headers={
+                        'Connection': 'keep-alive',
+                        'Expires': '-1',
+                        'Upgrade-Insecure-Requests': '1',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, '
+                                      'like Gecko) Chrome/91.0.4472.124 Safari/537.36 '
+                    },
+                    timeout=300
+            ) as resp:
+                if resp.status == requests.codes.ok:  # Found (likely)
+                    try:
+                        data = (await resp.json())['chart']['result'][0]  # Selecting only data necessary (no metadata)
+                        prices = pd.DataFrame(  # Creating pandas DataFrame to ensure right future json formatting
+                            index=pd.to_datetime(data['timestamp'], unit="s").normalize(),
+                            data=data['indicators']['quote'][0]
+                        ).loc[:, ('open', 'high', 'low', 'close', 'volume')]
+                        await StockQuotes.objects.filter(  # Asynchronously updating quotes
+                            symbol=self.symbol
+                        ).aupdate(quotes=prices.to_json())
+                    except KeyError or IndexError:  # No data returned despite code 200 (unlikely)
+                        raise KeyError(f'Error occurred during parsing symbol: {self.symbol}')
+                else:  # Not found (unlikely)
+                    raise Http404(f'No data for such symbol: {self.symbol}')
 
     # Returns last day and the day before difference
     def get_tendency(self) -> dict:
-        last_date = list(self.quotes)[-1]
-        last = self.quotes.get(last_date)
-        last.update({'date': last_date})
+        last = self.quotes.iloc[-1].copy()
+        last['date'] = self.quotes.index[-1].strftime('%Y-%m-%d')
         return {
             'change': round(last['close'] - last['open'], 2),
             'change_percent': round(
                 (last['close'] / last['open'] - 1) * 100, 2
             ) if last['open'] != 0 else 'Zero opening price',
-            'quotes': last
+            'quotes': last.to_dict()
         }
 
-    # Returns list of weighted moving averages lagging technical indicator values with selected parameters
-    def get_moving_averages(
+    def get_quotes(self) -> dict:
+        quotes = self.quotes  # Quotes serialization to JSON
+        quotes.index = quotes.index.strftime('%Y-%m-%d')
+        return quotes.transpose().to_dict()
+
+    def get_moving_averages(  # Moving Averages values for stock specified
             self,
-            range_start : str,
-            range_end : str,
-            period_length : int=200,
-            price : str='close',
-            type : str='SMA'
+            range_start: str = None,
+            range_end: str = None,
+            period_length: int = 200,
+            price: str = 'close',
+            _type: str = 'sma'
     ) -> dict:
-        # Preparing quotes data to by-index access
-        dates = list(self.quotes)
-        start, end = dates.index(range_start), dates.index(range_end)
-        # Quotes work range
-        period_quotes = list(self.quotes.values())
-        result = []
-        while (start - period_length + 1 < 0):
-            result.append(None)
-            start += 1
-        match type:
-            case 'SMA':
-                result.append(reduce(
-                    lambda part_sum, next: part_sum + next[price],
-                    period_quotes[start - period_length + 1 : start + 1], 0
-                ) / period_length)
-                for date in range(start + 1, end + 1):
-                    result.append(  # Iteration formula based
-                        result[-1] + (
-                            period_quotes[date][price] -
-                            period_quotes[date - period_length][price]
-                        ) / period_length
-                    )  # SMA(i,n) = SMA(i-1, n) + (P(i) - P(i-n))/n
-            case 'EMA':  # EMA
-                smoothing_factor = 1 - 2 / (period_length + 1)
-                result.append(
-                    sum([pow(smoothing_factor, start - k) / (1 - smoothing_factor) *
-                         period_quotes[k][price]
-                         for k in range(start - period_length + 1, start + 1)]) /
-                    sum([pow(smoothing_factor, start - k) / (1 - smoothing_factor)
-                         for k in range(start - period_length + 1, start + 1)])
-                )
-                for date in range(start + 1, end + 1):
-                    result.append(  # Iteration formula based
-                        (1 - smoothing_factor) * period_quotes[date][price] + smoothing_factor * result[-1]
-                    )  # EMA(i,n) = 2/(n+1) * P(i) + (1 - 2/(n+1)) * EMA(i-1,n)
-            case 'VMA':  # VMA
-                result.append(
-                    sum([period_quotes[k][price] * period_quotes[k]['volume']
-                         for k in range(start - period_length + 1, start + 1)]) /
-                    sum([period_quotes[k]['volume'] for k in range(start - period_length + 1, start + 1)])
-                )
-                for date in range(start + 1, end + 1):
-                    volume_sum = sum([period_quotes[k]['volume'] for k in range(date - period_length + 1, date + 1)])
-                    result.append(  # Iteration formula based
-                        result[-1] * (1 + (
-                                period_quotes[date - period_length]['volume'] - period_quotes[date]['volume']
-                        ) / volume_sum) - (
-                                period_quotes[date - period_length][price] * period_quotes[date - period_length]['volume'] -
-                                period_quotes[date][price] * period_quotes[date]['volume']
-                        ) / volume_sum
-                    )
         return {
-            'name': type,
-            'displayed_name': f'{type} {period_length} {price}',
+            'name': _type,
+            'displayed_name': f'{_type} {period_length} {price}',
             'args': {
                 'period_length': period_length,
                 'price': price
             },
-            'data': result,
+            'data': pd.Series(
+                data={
+                    'sma': ind.sma,
+                    'ema': ind.ema,
+                    'vwma': ind.wma(self.quotes['volume'].to_numpy()),
+                }[_type](self.quotes, price, period_length),
+                index=self.quotes.index
+            )[slice(range_start, range_end)].tolist(),
             'style': {
-                'color': 'rgba(0, 0, 0, 1)'  # JS format color
+                'color': 'rgba(0, 0, 0, 1)'  # CSS format color
             },
             'active': True,
         }
-
-    @staticmethod
-    def get_indicators_list():
-        return [
-            {
-                'name': 'SMA',
-                'displayed_name': 'SMA 20 close',
-                'args': {
-                    'period_length': 20,
-                    'price': 'close'
-                }
-            },
-            {
-                'name': 'EMA',
-                'displayed_name': 'EMA 20 close',
-                'args': {
-                    'period_length': 20,
-                    'price': 'close'
-                }
-            },
-            {
-                'name': 'VMA',
-                'displayed_name': 'VMA 20 close',
-                'args': {
-                    'period_length': 20,
-                    'price': 'close'
-                }
-            }
-        ]
 
     def __str__(self):
         return self.name
 
 
-# Stock model used for create portfolios
-class Stock(models.Model):
-    # Link to the original instrument model
-    origin = models.OneToOneField(
-        Quotes,
+class StockInstance(models.Model):  # Stock model used to create portfolios
+    quotes = models.ForeignKey(  # Linking model storing quotes of stock
+        StockQuotes,
         on_delete=models.CASCADE,
-        related_name='stock_origin'
-    )  # Current amount of stocks in the portfolio
-    amount = models.PositiveSmallIntegerField()
+        related_name='stock_quotes'
+    )
+    amount = models.PositiveSmallIntegerField(  # Current amount in the portfolio
+        default=1,
+        null=False
+    )

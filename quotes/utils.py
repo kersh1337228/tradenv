@@ -1,80 +1,79 @@
-import csv
-import datetime
-import re
-import requests
-from django.http import Http404
+import csv, datetime, time, requests, os, json, asyncio, aiohttp
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'quotes_analysis.settings')
 import django
 django.setup()
-from quotes import models
-from quotes.models import Quotes
-import multiprocessing
-import pandas_datareader.yahoo.daily
-import pandas_datareader._utils
+from django.http import Http404
+from quotes.models import StockQuotes
+import pandas as pd
 
 
-def parse_quote_by_symbol(symbol: str, name: str) -> tuple[str, str, dict] | None:
-    try:
-        daily_reader = pandas_datareader.yahoo.daily.YahooDailyReader(
-            symbols=symbol,
-            start=datetime.datetime(1980, 1, 1),
-            end=datetime.datetime.now(),
-        )
-        data = daily_reader.read()
-        quotes = {
-            date: {
-                'open': data.loc[date]['Open'],
-                'high': data.loc[date]['High'],
-                'low': data.loc[date]['Low'],
-                'close': data.loc[date]['Close'],
-                'volume': data.loc[date]['Volume'],
-            } for date in data.index.strftime('%Y-%m-%d')
-        }
-        Quotes.objects.create(
-            name=name,
-            symbol=symbol,
-            quotes=quotes,
-            slug=re.sub('[\W]+', '_', name.lower()),
-        )
-        daily_reader.close()
-        return symbol, name, quotes
-    except pandas_datareader._utils.RemoteDataError:
-        print(f'Error occurred during quotes parsing. No data for such symbol: {symbol}')
-    except:
-        print('Unknown error occurred during quotes parsing.')
+async def parse_quote_by_symbol(session: aiohttp.ClientSession, symbol: str, name: str):
+    print(f'Symbol: {symbol}\tName: {name}')
+    async with session.get(
+        url=f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}',
+        params={
+            'period1': 0,
+            'period2': int(time.mktime(datetime.datetime.now().timetuple())),
+            'interval': '1d',
+            'frequency': '1d',
+            'events': 'history'
+        },
+        headers={
+            'Connection': 'keep-alive',
+            'Expires': '-1',
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+        timeout=300
+    ) as resp:
+        if resp.status == requests.codes.ok:
+            try:
+                data = (await resp.json())['chart']['result'][0]
+                prices = pd.DataFrame(
+                    index=pd.to_datetime(data['timestamp'], unit="s").normalize(),
+                    data=data['indicators']['quote'][0]
+                ).loc[:, ('open', 'high', 'low', 'close', 'volume')]
+                await StockQuotes.objects.acreate(
+                    name=name,
+                    symbol=symbol,
+                    quotes=prices.to_json()
+                )
+            except KeyError or IndexError:
+                print(f'Error occurred during parsing symbol: {symbol}')
+        else:
+            print(f'No data for such symbol: {symbol}')
 
 
 # Parsing quotes names, symbols and etc.
-def parse_quotes_names() -> None:
-    # Making api request to get .csv response
-    response = requests.get(
-        url='https://www.alphavantage.co/query?',
-        params={
-            'function': 'LISTING_STATUS',
-            'apikey': Quotes.api_key,
-        }
-    )
-    # Checking if the response is successful
-    if response.status_code == 200:
-        # Decoding and serializing csv
-        rows = csv.reader(
-            response.content.decode('utf-8').splitlines(),
-            delimiter=','
+async def parse_quotes_names() -> None:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(  # Sending api request to get .csv response
+            url='https://www.alphavantage.co/query?',
+            params={
+                'function': 'LISTING_STATUS',
+                'apikey': StockQuotes.api_key,
+            }
+        ) as response:
+            if response.status == requests.codes.ok:  # Checking if the response is successful
+                rows = csv.reader(  # Decoding and serializing csv
+                    (await response.text('utf-8')).splitlines(),
+                    delimiter=','
+                )
+                next(rows)  # Moving to next line to skip header row
+            else:
+                raise Exception(
+                    f'Parsing error. Http response '
+                    f'status code is {response.status}'
+                )
+        await asyncio.gather(
+            *(asyncio.ensure_future(
+                parse_quote_by_symbol(session, row[0], row[1])
+            ) for row in rows)
         )
-        next(rows)  # Moving to next line to skip header row
-        with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
-            pool.starmap(
-                parse_quote_by_symbol,
-                [(row[0], row[1]) for row in rows]
-            )
-            pool.close()
-            pool.join()
-    else:
-        print(f'Parsing error. Http response status code is {response.status_code}')
 
 
-# Paginate quotes list pages
-def paginate(current_page: int, limit: int) -> dict:
-    total_amount = Quotes.objects.count()
+def paginate(current_page: int, limit: int) -> dict:  # Paginate quotes list pages
+    total_amount = StockQuotes.objects.count()
     pages_amount = (total_amount // limit) + 1 if \
         (total_amount % limit) else (total_amount // limit)
     if current_page <= 0 or current_page > pages_amount:
@@ -90,5 +89,6 @@ def paginate(current_page: int, limit: int) -> dict:
         }
 
 
-# if __name__ == '__main__':
-#     parse_quotes_names()
+if __name__ == '__main__':
+    # asyncio.run(parse_quotes_names())
+    pass

@@ -7,7 +7,8 @@ export default class PortfolioList extends React.Component {
         super(props)
         this.state = {
             portfolios: [],
-            errors: {}
+            errors: {},
+            loading: false
         }
         // Creating references
         this.formRef = React.createRef()
@@ -15,19 +16,19 @@ export default class PortfolioList extends React.Component {
         this.initial_request = this.initial_request.bind(this)
         this.portfolio_create = this.portfolio_create.bind(this)
         this.show_form = this.show_form.bind(this)
-        // Initial request
-        this.initial_request()
     }
 
     initial_request() {
         let current = this
+        current.setState({loading: true})
         $.ajax({
-            url: `${window.location.href}`,
+            url: `/portfolio/api/list`,
             type: 'GET',
             data: {},
             success: function (response) {
                 current.setState({
-                    portfolios: response.portfolios
+                    portfolios: response.portfolios,
+                    loading: false
                 })
             },
             error: function (response) {}
@@ -47,10 +48,12 @@ export default class PortfolioList extends React.Component {
         let current = this
         event.preventDefault()
         $.ajax({
-            url: `${window.location.origin}/portfolio/create/`,
+            url: `/portfolio/api/create`,
             type: 'POST',
             headers: {
-                'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
+                'X-CSRFToken': document.cookie.match(
+                    /csrftoken=([\w]+)[;]?/
+                )[1],
             },
             data: {
                 name: event.target.name.value,
@@ -72,6 +75,10 @@ export default class PortfolioList extends React.Component {
         })
     }
 
+    componentDidMount() {
+        this.initial_request()
+    }
+
     render() {
         let portfolio_list = this.state.portfolios.length ?
             <div className="portfolio_list">
@@ -86,7 +93,7 @@ export default class PortfolioList extends React.Component {
                     </ul>
                 </div>
                 {this.state.portfolios.map(portfolio =>
-                    <Link to={'/portfolio/detail/' + portfolio.slug + '/'} key={portfolio.slug}>
+                    <Link to={'/portfolio/detail/' + portfolio.slug} key={portfolio.slug}>
                         <div className="portfolio_list_detail">
                             <ul>
                                 <li className="portfolio_list_detail_name">{portfolio.name}</li>
@@ -98,7 +105,9 @@ export default class PortfolioList extends React.Component {
                         </div>
                     </Link>
                 )}
-            </div> : <div className="portfolio_list">No portfolios yet</div>
+            </div> : <h1 className="portfolio_list">
+                {this.state.loading ? 'Loading...' : 'No portfolios yet.'}
+            </h1>
         return(
             <div className={'portfolio_list_block'}>
                 <div className={'portfolio_list_create'}>

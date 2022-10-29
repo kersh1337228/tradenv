@@ -1,70 +1,101 @@
-from django.core.files import File
-from django.db import models
 import datetime
+import pandas as pd
+from django.db import models
+from asgiref.sync import async_to_sync
 
 
-'''Log class with user analytics log,
-created after pushing the analyze button and
-stores the data of the analysis'''
-class Log(models.Model):
-    range_start = models.DateField()
-    range_end = models.DateField()
-    strategy = models.ForeignKey(
-        'strategy.Strategy',
-        on_delete=models.CASCADE
-    )
+# Custom field to store pandas DataFrames with MultiIndex
+class MultiIndexDataFrameField(models.JSONField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def from_db_value(self, value: None | str, expression, connection):
+        if not value:
+            return pd.DataFrame()
+        df = pd.read_json(
+            super().from_db_value(value, expression, connection)
+        ).set_index('level_0', append=True).reorder_levels((1, 0))
+        return df
+
+    def to_python(self, value: pd.DataFrame | None | str):
+        if isinstance(value, pd.DataFrame):
+            return value
+        if not value:
+            return pd.DataFrame()
+        return pd.DataFrame(super().to_python(value))
+
+    def get_prep_value(self, value: pd.DataFrame):
+        return super().get_prep_value(value.reset_index(level=0).to_json())
+
+
+class Log(models.Model):  # Analytical log storing full strategy application result
+    range_start = models.DateTimeField()
+    range_end = models.DateTimeField()
+    strategies = models.JSONField()  # Strategies and parameters used
     portfolio = models.ForeignKey(
         'portfolio.Portfolio',
         on_delete=models.CASCADE
     )
-    logs = models.JSONField()
+    logs = MultiIndexDataFrameField(  # Analysis result
+        blank=False,
+        null=False
+    )
     slug = models.SlugField(
         max_length=255,
         unique=True,
         db_index=True,
     )
 
-    def serialize_logs(self):
-        logs = self.logs.copy()
-        for log in logs:
-            log['stocks'] = sum(log['stocks'].values())
-        return logs
-
-    def get_price_deltas(self) -> dict:
+    @async_to_sync
+    async def get_price_deltas(self) -> dict:
         return {
             'balance': {
-                'percent': round(self.logs[-1]['cost'] / self.logs[0]['cost'] - 1, 2) * 100,
-                'currency': round(self.logs[-1]['cost'] - self.logs[0]['cost'], 2)
+                strategy: {
+                    'percent': round(
+                        (self.logs.loc[strategy].iloc[-1]['value'] /
+                        self.logs.loc[strategy].iloc[0]['value'] - 1) * 100, 2
+                    ),
+                    'currency': round(
+                        self.logs.loc[strategy].iloc[-1]['value'] -
+                        self.logs.loc[strategy].iloc[0]['value'], 2
+                    )
+                }
+                for strategy in self.logs.index.levels[0]
             },
-            'stocks': self.portfolio.stocks_price_deltas(
+            'stocks': await self.portfolio.stocks_price_deltas(
                 self.range_start, self.range_end
             )
         }
 
-    def get_stocks_quotes(self):
-        return self.portfolio.get_all_quotes(
-            self.range_start, self.range_end
+    def get_logs(self) -> dict:
+        def transform(df):  # Logs proper formatting
+            df = df.xs(df.name) # Separating MultiIndex levels
+            df.index = df.index.strftime('%Y-%m-%d')  # Changing TimeStamp to str
+            return df.transpose().to_dict()  # Serializing
+        return self.logs.groupby(  # Level-wise serialization
+            level=0
+        ).apply(transform).to_dict()
+
+    @async_to_sync
+    async def get_stocks_quotes(self):
+        return await self.portfolio.get_all_quotes(
+            self.range_start, self.range_end, 'dict'
         )
 
-    def save(self, **kwargs):
-        if not self.logs:
-            self.logs = self.strategy.buy_or_sell(
-                self.portfolio, self.range_start, self.range_end,
+    def save(  # Custom save method to create slug using name
+            self,
+            force_insert=False,
+            force_update=False,
+            using=None,
+            update_fields=None
+    ):
+            if not self.slug:
+                self.slug = f'''log_{datetime.datetime.now().strftime(
+                    "%Y_%m_%d_%H_%M_%S"
+                )}'''
+            super().save(
+                force_insert=False,
+                force_update=False,
+                using=None,
+                update_fields=None
             )
-        if not self.slug:
-            self.slug = f'log_{datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")}'
-        super(Log, self).save(**kwargs)
-
-
-# Image class to attach multiple images to one model
-class Image(models.Model):
-    image = models.ImageField(
-        upload_to='plots/%Y/%m/%d/%H/%M/%S'
-    )
-
-    def attach_image(self, filename):
-        self.image.save(
-            filename,
-            File(open(f'ui/business_logic/{filename}', 'rb'))
-        )
-        self.save()

@@ -22,7 +22,7 @@ export default class StrategyList extends React.Component {
     initial_request() {
         let current = this
         $.ajax({
-            url: `${window.location.href}`,
+            url: `/strategy/api/list`,
             type: 'GET',
             data: {},
             success: function (response) {

@@ -1,24 +1,29 @@
 from rest_framework import serializers
 from portfolio.models import Portfolio
-from quotes.serializers import StockSerializer
+from quotes.serializers import StockInstanceSerializer
+from asgiref.sync import sync_to_async
 
 
 class PortfolioSerializer(serializers.ModelSerializer):
     created = serializers.DateTimeField(format='%Y/%m/%d %H:%M', required=False)
     last_updated = serializers.DateTimeField(format='%Y/%m/%d %H:%M', required=False)
-    stocks = StockSerializer(many=True, read_only=True, required=False)
+    slug = serializers.SlugField(validators=[], required=False)
+    stocks = StockInstanceSerializer(many=True, read_only=True, required=False)
 
-    def create(self):
-        return PortfolioSerializer(
-            Portfolio.objects.create(**self.validated_data)
-        ).data
+    async def acreate(self):
+        if await sync_to_async(self.is_valid)(raise_exception=True):
+            obj = await Portfolio.objects.acreate(**self.validated_data)
+            return await sync_to_async(
+                lambda: PortfolioSerializer(obj).data
+            )()
 
-    def update(self, slug):
-        queryset = Portfolio.objects.filter(slug=slug)
-        queryset.update(**self.validated_data)
-        return PortfolioSerializer(queryset.last()).data
+    async def aupdate(self, slug: str):
+        if await sync_to_async(self.is_valid)(raise_exception=True):
+            obj = await Portfolio.objects.aget(slug=slug)
+            await sync_to_async(obj.save)()
+            return await sync_to_async(lambda: PortfolioSerializer(obj).data)()
 
     class Meta:
         model = Portfolio
-        fields = '__all__'
-        optional_fields = ('created', 'last_updated')
+        exclude = ('id',)
+        optional_fields = ('created', 'last_updated', 'slug')

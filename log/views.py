@@ -1,15 +1,14 @@
-from django.shortcuts import render
 from rest_framework import generics
 from rest_framework.response import Response
 from log.models import Log
 from log.serializers import LogSerializer
+from asgiref.sync import async_to_sync, sync_to_async
 
 
-# Shows list of all analysis logs
 class LogListAPIView(
     generics.ListAPIView
 ):
-    def get(self, request, *args, **kwargs):  # list
+    def get(self, request, *args, **kwargs):
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return Response(
                 data={
@@ -20,39 +19,27 @@ class LogListAPIView(
                 },
                 status=200,
             )
-        else:
-            return render(
-                template_name='index.html',
-                request=request
-            )
 
 
 # Getting log details or deleting the one
 class LogAPIView(
-    generics.RetrieveUpdateDestroyAPIView
+    generics.RetrieveDestroyAPIView
 ):
-    def get(self, request, *args, **kwargs):  # detail
+    @async_to_sync
+    async def get(self, request, *args, **kwargs):  # Selecting log matching request
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
+            log = await Log.objects.aget(slug=kwargs.get('slug'))
             return Response(
                 data={
-                    'log': LogSerializer(
-                        generics.get_object_or_404(
-                            Log,
-                            slug=kwargs.get('slug')
-                        )
-                    ).data
+                    'log': await sync_to_async(
+                        lambda: LogSerializer(log).data
+                    )()
                 },
                 status=200
             )
-        else:
-            return render(
-                template_name='index.html',
-                request=request
-            )
 
-    def delete(self, request, *args, **kwargs):  # delete
+    @async_to_sync
+    async def delete(self, request, *args, **kwargs):  # Deleting log matching request
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
-            Log.objects.get(slug=kwargs.get('slug')).delete()
+            await Log.objects.filter(slug=kwargs.get('slug')).adelete()
             return Response({}, status=200)
-        else:
-            pass

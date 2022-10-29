@@ -1,10 +1,10 @@
 # Quotes analysis
-    Description:
-This project uses stock market open data for its analysis.
+### Description:
+- This project uses stock market open data for technical analysis.
 
-    Applications:
-1) Analysis (uses data to analyse market)
-2) Quotes (used for getting quotes)
-3) Portfolio (used to create investment portfolios)
-4) Strategy (used to create investment strategies)
-5) Log (used to store analysis logs)
+### Applications:
+- Analysis (uses data to analyse strategies)
+- Quotes (used to get stocks quotes)
+- Portfolio (used to create, store and modify investment portfolios)
+- Strategy (used to create, store and modify investment strategies)
+- Log (used to store analytical logs)

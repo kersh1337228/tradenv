@@ -12,8 +12,11 @@ export default class QuotesDetail extends React.Component {
 
     componentDidMount() {
         let current = this
+        const symbol = window.location.href.match(
+            /\/quotes\/detail\/([\w]+)/
+        )[1]
         $.ajax({
-            url: `${window.location.href}`,
+            url: `/quotes/api/detail/${symbol}`,
             type: 'GET',
             data: {},
             success: function (response) {
@@ -50,13 +53,16 @@ export default class QuotesDetail extends React.Component {
                     </ul>
                     <div className="quotes_price_plot">
                         <h3>Price change</h3>
-                        <PlotFinancial data={this.state.quotes.quotes} slug={this.state.quotes.slug}/>
+                        <PlotFinancial
+                            data={this.state.quotes.quotes}
+                            symbol={this.state.quotes.symbol}
+                        />
                     </div>
                 </div>
             )
         } catch (error) {
             return(
-                <div className="quotes_detail">Error occurred</div>
+                <div className="quotes_detail">Error occurred.</div>
             )
         }
     }

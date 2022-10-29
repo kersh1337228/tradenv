@@ -1,5 +1,6 @@
 Django
 djangorestframework
+asgiref
 Pillow
 numpy
 pandas

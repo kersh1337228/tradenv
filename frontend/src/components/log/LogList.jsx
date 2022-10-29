@@ -11,14 +11,12 @@ export default class LogList extends React.Component {
         // Methods binding
         this.initial_request = this.initial_request.bind(this)
         this.log_delete = this.log_delete.bind(this)
-        // Initial request
-        this.initial_request()
     }
 
     initial_request() {
         let current = this
         $.ajax({
-            url: `${window.location.href}`,
+            url: `/log/api/list`,
             type: 'GET',
             data: {},
             success: function (response) {
@@ -46,6 +44,10 @@ export default class LogList extends React.Component {
                 error: function (response) {}
             })
         }
+    }
+
+    componentDidMount() {
+        this.initial_request()
     }
 
     render() {

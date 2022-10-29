@@ -1,16 +1,21 @@
 from django.urls import path
-from analysis.views import AnalysisAPIView
+from analysis import views
 
 
 urlpatterns = [
     path(
         '',
-        AnalysisAPIView.as_view(),
+        views.GenericView.as_view(),
         name='analysis'
     ),
     path(
-        'form/',
-        AnalysisAPIView.as_view(),
+        'api/submit',
+        views.AnalysisAPIView.as_view(),
+        name='analysis_form_submit'
+    ),
+    path(
+        'form',
+        views.AnalysisAPIView.as_view(),
         name='analysis_form'
     ),
 ]

@@ -1,91 +1,97 @@
+import pandas as pd
+import rest_framework.parsers
 from django.shortcuts import render, redirect
 from rest_framework import generics
 from rest_framework.response import Response
-from rest_framework.reverse import reverse_lazy
 from log.models import Log
 from portfolio.models import Portfolio
 from portfolio.serializers import PortfolioSerializer
-from strategy.models import Strategy
-from strategy.serializers import StrategySerializer
+from asgiref.sync import async_to_sync, sync_to_async
+import strategy.utils as strats
+
+
+class GenericView(generics.ListAPIView):
+    def get(self, request, *args, **kwargs):
+        return render(  # Just returning template for further React rendering
+            request=request,
+            template_name='index.html',
+        )
 
 
 class AnalysisAPIView(
     generics.CreateAPIView,
-    generics.RetrieveUpdateDestroyAPIView
+    generics.RetrieveAPIView
 ):
-    # Analysis page get request, returns the form fields
-    # step by step, depending on the previous choices
-    def get(self, request, *args, **kwargs):
+    @async_to_sync
+    async def get(self, request, *args, **kwargs):  # Step by step form signing in
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             response = {'data': {}, 'status': 0}
             match request.query_params.get('step'):
                 case 'initial':  # Initial request
                     response = {
                         'data': {
-                            'portfolios': PortfolioSerializer(
-                                Portfolio.objects.all(),
-                                many=True
-                            ).data,
-                            'strategies': StrategySerializer(
-                                Strategy.objects.all(),
-                                many=True
-                            ).data,
+                            'portfolios': await sync_to_async(
+                                lambda: PortfolioSerializer(
+                                    Portfolio.objects.all(),
+                                    many=True
+                                ).data
+                            )()
                         },
                         'status': 200
                     }
                 case 'portfolio':  # Choosing the portfolio
-                    portfolio = Portfolio.objects.get(slug=request.query_params.get('slug'))
-                    if not len(portfolio.stocks.all()):
+                    portfolio = await Portfolio.objects.aget(slug=request.query_params.get('slug'))
+                    if not await portfolio.stocks.aexists():
                         response['data']['portfolio'] = ['No stocks in the portfolio']
-                        response['status'] = 400
+                        response['status'] = 500
                     if not portfolio.balance:
-                        if not 'portfolio' in response['data'].keys():
+                        if 'portfolio' not in response['data'].keys():
                             response['data']['portfolio'] = ['Zero portfolio balance']
                         else:
                             response['data']['portfolio'].append(['Zero portfolio balance'])
-                        response['status'] = 400
+                        response['status'] = 500
                     if not response['status']:
                         response = {
                             'data': {
-                                'dates': portfolio.get_quotes_dates()
+                                'dates': (
+                                    await portfolio.get_quotes_dates()
+                                ).strftime('%Y-%m-%d').tolist()
                             },
                             'status': 200
                         }
             return Response(**response)
-        else:
-            return render(
-                template_name='index.html',
-                request=request,
-            )
 
-    # Getting form data and analysing them
-    def post(self, request, *args, **kwargs):
+    parser_classes = (rest_framework.parsers.JSONParser,)
+
+    @async_to_sync
+    async def post(self, request, *args, **kwargs):  # Getting form data and analysing them
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
-            pass
-        else:
-            return redirect(
-                'log_detail',
-                slug=Log.objects.create(
-                    range_start=request.data.get('time_interval_start'),
-                    range_end=request.data.get('time_interval_end'),
-                    strategy=Strategy.objects.get(
-                        slug=request.data.get('strategy')
-                    ),
-                    portfolio=Portfolio.objects.get(
-                        slug=request.data.get('portfolio')
-                    ),
-                ).slug,
+            range_start, range_end, strategies, portfolio = (
+                request.data.get('range_start'),
+                request.data.get('range_end'),
+                request.data.get('strategies'),
+                await Portfolio.objects.aget(
+                    slug=request.data.get('portfolio')
+                )
             )
-
-    def put(self, request, *args, **kwargs):
-        pass
-
-    def patch(self, request, *args, **kwargs):
-        pass
-
-    def delete(self, request, *args, **kwargs):
-        pass
-
-    '''Redirecting if form is validated successfully'''
-    def get_success_url(self):
-        return reverse_lazy('plot')
+            log = await Log.objects.acreate(
+                range_start=range_start,
+                range_end=range_end,
+                portfolio=portfolio,
+                strategies={sname: request.data.get(sname) for sname in strategies},
+                logs=pd.concat(
+                    objs=[
+                        await getattr(strats, sname)(**{
+                            'portfolio': portfolio,
+                            'range_start': range_start,
+                            'range_end': range_end,
+                        }, **request.data.get(sname)) for sname in strategies
+                    ],
+                    axis=0,
+                    keys=strategies
+                )
+            )
+            return Response(
+                data={'slug': log.slug},
+                status=201
+            )

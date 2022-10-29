@@ -1,7 +1,10 @@
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from typing import Literal
+import numpy as np
+import pandas as pd
 import datetime
-import pandas
+import re
 
 
 # Portfolio class containing stocks and balance
@@ -18,7 +21,7 @@ class Portfolio(models.Model):
         ]
     )
     stocks = models.ManyToManyField(
-        'quotes.Stock',
+        'quotes.StockInstance',
         related_name='portfolio_stocks',
         blank=True,
     )
@@ -30,50 +33,81 @@ class Portfolio(models.Model):
     )
     slug = models.SlugField(
         max_length=255,
-        blank=False,
         null=False,
         unique=True,
+        db_index=True
     )
 
-    # Returns the first and the last dates available in quotes
-    # to analyse portfolios with multiple different instruments
-    def get_quotes_dates(self):
-        return pandas.date_range(
-            max([datetime.datetime.strptime(
-                list(stock.origin.quotes.keys())[0],
-                '%Y-%m-%d'
-            ) for stock in self.stocks.all()]),
-            min([datetime.datetime.strptime(
-                list(stock.origin.quotes.keys())[-1],
-                '%Y-%m-%d'
-            ) for stock in self.stocks.all()])
-        ).strftime('%Y-%m-%d').tolist()
+    def save(  # Custom save method to autogenerate slug from name
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        self.slug = re.sub(r'[.\- ]+', '_', self.name.strip().lower())
+        super().save(force_insert, force_update, using, update_fields)
 
-    # Get all portfolio stocks quotes for certain period
-    def get_all_quotes(self, range_start: datetime.date, range_end: datetime.date, type: str ='standard') -> dict:
-        return {
-            stock.origin.name:
-                stock.origin.get_quotes_for_range(
-                    range_start, range_end, type
-                ) for stock in self.stocks.all()
-        }
+    # Returns the earliest and latest dates available for stocks chosen
+    async def get_quotes_dates(self) -> pd.DatetimeIndex:
+        starts_n_ends = np.array(  # Selecting first and last date for all stocks
+            [stock.quotes.quotes.index[[0, -1]]
+                async for stock in self.stocks.select_related('quotes')],
+            pd.Timestamp
+        )
+        return pd.date_range(
+            starts_n_ends[:, 0].max(axis=0),
+            starts_n_ends[:, 1].min(axis=0)
+        )
 
-    def stocks_price_deltas(self, range_start, range_end):
-        price_deltas = []
-        for stock in self.stocks.all():
-            quotes = stock.origin.get_quotes_for_range(range_start, range_end)
-            first, last = quotes[list(quotes)[0]], quotes[list(quotes)[-1]]
-            price_deltas.append({
-                'name': stock.origin.name,
-                'percent': round(
-                    last['close'] /
-                    first['close'] - 1, 2) * 100 if first['close'] else None,
-                'currency': round(
-                    last['close'] -
-                    first['close'], 2
+    async def get_all_quotes(  # Get portfolio stocks quotes for certain period
+            self,
+            range_start: datetime.date | pd.Timestamp | np.datetime64 | str = None,
+            range_end: datetime.date | pd.Timestamp | np.datetime64 | str = None,
+            _format: Literal['dataframe', 'dict'] = 'dataframe',  # Return format
+            _fill: bool = False  # Fill days with no data
+    ) -> pd.DataFrame:
+        if _fill:  # Creating date range to fill blank days
+            if not range_start or not range_end:
+                quotes_dates = await self.get_quotes_dates()
+            date_range = pd.date_range(
+                range_start if range_start else quotes_dates[0],
+                range_end if range_end else quotes_dates[-1]
+            )
+            all_quotes = {
+                stock.quotes.symbol:
+                    stock.quotes.quotes.reindex(date_range).ffill().bfill()
+                async for stock in self.stocks.select_related('quotes')
+            }
+        else:  # Just making DateTimeIndex slice
+            all_quotes = {
+                stock.quotes.symbol:
+                    stock.quotes.quotes[slice(range_start, range_end)]
+                async for stock in self.stocks.select_related('quotes')
+            }
+        match _format:
+            case 'dataframe':
+                return pd.concat(
+                    objs=all_quotes.values(),
+                    axis=0,
+                    keys=all_quotes.keys()
                 )
-            })
-        return price_deltas
+            case 'dict':
+                return all_quotes
+
+    async def stocks_price_deltas(
+            self,
+            range_start: datetime.date | pd.Timestamp | np.datetime64 | str = None,
+            range_end: datetime.date | pd.Timestamp | np.datetime64 | str = None,
+            price: Literal['open', 'high', 'low', 'close'] = 'close'
+    ) -> list[dict]:
+        async def async_generator():
+            async for stock in self.stocks.select_related('quotes'):
+                first, last = stock.quotes.quotes[price][slice(range_start, range_end)][[0, -1]]
+                yield {
+                    'symbol': stock.quotes.symbol,
+                    'name': stock.quotes.name,
+                    'percentage': round(last / first - 1, 2) * 100
+                    if first else None,
+                    'numerical': round(last - first, 2)
+                }
+        return [price_delta async for price_delta in async_generator()]
 
     def __str__(self):
         return self.name

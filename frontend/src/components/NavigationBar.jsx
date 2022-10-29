@@ -8,19 +8,16 @@ export default class NavigationBar extends React.Component {
         this.tabs = [
             {
                 name: 'Analysis',
-                link: '/analysis/'
+                link: '/analysis'
             }, {
                 name: 'Quotes',
-                link: '/quotes/list/'
+                link: '/quotes/list'
             }, {
                 name: 'Portfolios',
-                link: '/portfolio/list/'
-            }, {
-                name: 'Strategies',
-                link: '/strategy/list/'
+                link: '/portfolio/list'
             }, {
                 name: 'Logs',
-                link: '/log/list/'
+                link: '/log/list'
             },
         ]
     }
