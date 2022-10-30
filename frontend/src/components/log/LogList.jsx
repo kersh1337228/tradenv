@@ -1,5 +1,5 @@
 import React from 'react'
-import LogListDetail from "./LogListDetail";
+import LogListDetail from './LogListDetail'
 
 
 export default class LogList extends React.Component {
@@ -10,7 +10,7 @@ export default class LogList extends React.Component {
         }
         // Methods binding
         this.initial_request = this.initial_request.bind(this)
-        this.log_delete = this.log_delete.bind(this)
+        this.remove_log_from_list = this.remove_log_from_list.bind(this)
     }
 
     initial_request() {
@@ -28,22 +28,12 @@ export default class LogList extends React.Component {
         })
     }
 
-    log_delete(event) {
-        if (confirm(`Do you really want to delete the log?`)) {
-            let current = this
-            $.ajax({
-                url: `${window.location.origin}/log/delete/${event.target.id}/`,
-                type: 'DELETE',
-                success: function () {
-                    current.setState({
-                        logs: current.state.logs.filter(
-                            log => log.slug !== event.target.id
-                        ),
-                    })
-                },
-                error: function (response) {}
-            })
-        }
+    remove_log_from_list(slug) {
+        this.setState({
+            logs: this.state.logs.filter(
+                log => log.slug !== slug
+            ),
+        })
     }
 
     componentDidMount() {
@@ -56,11 +46,7 @@ export default class LogList extends React.Component {
                 {this.state.logs.length ?
                 <div className="log_list">
                     {this.state.logs.map(log =>
-                        <>
-                            <span className="config_button" id={log.slug}
-                                  onClick={this.log_delete}>Delete</span>
-                            <LogListDetail log={log} key={log.slug}/>
-                        </>
+                        <LogListDetail key={log.slug} log={log} remove={this.remove_log_from_list}/>
                     )}
                 </div> : <div className="log_list">No logs yet</div>
                 }

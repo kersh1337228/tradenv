@@ -5,10 +5,18 @@ import './PlotDateValue.css'
 // Figure class containing main plot component data
 class Figure {
     constructor(
-        window_size_width, window_size_height,
-        padding_left=0, padding_top=0, padding_right=0, padding_bottom=0,
-        grid_vertical_amount=10, grid_vertical_color='#000000', grid_vertical_width=1,
-        grid_horizontal_amount=10, grid_horizontal_color='#000000', grid_horizontal_width=1,
+        window_size_width,
+        window_size_height,
+        padding_left=0,
+        padding_top=0,
+        padding_right=0,
+        padding_bottom=0,
+        grid_vertical_amount=10,
+        grid_vertical_color='#000000',
+        grid_vertical_width=1,
+        grid_horizontal_amount=10,
+        grid_horizontal_color='#000000',
+        grid_horizontal_width=1,
         canvas_density=1
     ) {
         this.window_size = {
@@ -68,7 +76,6 @@ export default class PlotDateValue extends React.Component {
         // Component data initialization
         super(props)
         this.state = {
-            data: props.data,
             figures: {
                 main: new Figure(
                     850, 480,
@@ -79,11 +86,15 @@ export default class PlotDateValue extends React.Component {
 
                 ),
                 hit: new Figure(850, 480),
-                dates: new Figure(850, 48, 0, 0.1)
+                dates: new Figure(850, 48, 0, 0.1),
+                value: new Figure(48, 480)
             },
             tooltips: null,
             data_range: null,
-        }
+        }  // Data amount indicator
+        this.is_enough_data = props.data.every(
+            log => Object.keys(log.data).length > 4
+        )
         // Data range navigation
         this.drag = {
             main: {
@@ -116,44 +127,106 @@ export default class PlotDateValue extends React.Component {
     plot(callback) {
         let state = this.state
         // Clear
-        state.figures.main.context.clearRect(0, 0, state.figures.main.get_width(), state.figures.main.get_height())
-        state.figures.dates.context.clearRect(0, 0, state.figures.dates.get_width(), state.figures.dates.get_height())
+        state.figures.main.context.clearRect(
+            0, 0,
+            state.figures.main.get_width(),
+            state.figures.main.get_height()
+        )
+        state.figures.dates.context.clearRect(
+            0, 0,
+            state.figures.dates.get_width(),
+            state.figures.dates.get_height()
+        )
         // Drawing grid on plot canvases
         this.show_grid(state.figures.main)
-        // Getting observed data range
-        const n = state.data.length
-        const data = state.data.slice(
-            Math.floor(n * state.data_range.start),
-            Math.ceil(n * state.data_range.end)
-        )
-        const data_amount = data.length
+        // Curves colors
+        const colors = [
+            '#d14d00',
+            '#000fca',
+            '#5ec200',
+            '#bb0000',
+            '#8900ad',
+            '#bb8b00',
+            '#00a076',
+        ]
         // Rescaling
-        const cost = Array.from(data, obj => obj.cost)
-        state.figures.main.scale.height = (state.figures.main.get_height() * (1 - state.figures.main.padding.bottom - state.figures.main.padding.top)) /
-            Math.abs(Math.max.apply(null, cost) - Math.min.apply(null, cost))
-        state.figures.main.scale.width = (state.figures.main.get_width() * (1 - state.figures.main.padding.left - state.figures.main.padding.right)) / (data_amount - 1)
+        const [max_value, min_value, max_data_amount] = [
+            Math.max.apply(
+                null, this.props.data.map(
+                    log => Math.max.apply(null, Array.from(
+                        log.data.slice(
+                            Math.floor(log.data.length * state.data_range.start),
+                            Math.ceil(log.data.length * state.data_range.end)
+                        ), obj => obj.value
+                    ))
+                )
+            ),
+            Math.min.apply(
+                null, this.props.data.map(
+                    log => Math.min.apply(null, Array.from(
+                        log.data.slice(
+                            Math.floor(log.data.length * state.data_range.start),
+                            Math.ceil(log.data.length * state.data_range.end)
+                        ), obj => obj.value
+                    ))
+                )
+            ),
+            Math.max.apply(
+                null, this.props.data.map(
+                    log => log.data.slice(
+                        Math.floor(log.data.length * state.data_range.start),
+                        Math.ceil(log.data.length * state.data_range.end)
+                    ).length
+                )
+            )
+        ]
+        const spread = Math.abs(max_value - min_value)
+        state.figures.main.scale.height = state.figures.main.get_height() *
+            (1 - state.figures.main.padding.bottom - state.figures.main.padding.top) /
+            spread
+        state.figures.main.scale.width = state.figures.main.get_width() *
+            (1 - state.figures.main.padding.left - state.figures.main.padding.right) /
+            (max_data_amount - 1)
         // Moving coordinates system
-        state.figures.main.axes.y = Math.max.apply(null, cost) *
-            state.figures.main.scale.height + state.figures.main.padding.top * state.figures.main.get_height()
+        state.figures.main.axes.y = max_value * state.figures.main.scale.height +
+            state.figures.main.padding.top * state.figures.main.get_height()
         state.figures.main.axes.x = state.figures.main.padding.left * state.figures.main.get_width()
-        state.figures.main.context.save()
-        state.figures.main.context.translate(state.figures.main.axes.x, state.figures.main.axes.y)
-        state.figures.main.context.scale(1, -state.figures.main.scale.height)
-        // Drawing plot
-        state.figures.main.context.beginPath()
-        state.figures.main.context.moveTo(0, cost[0])
-        for (let i = 1; i < data_amount; ++i) {
-            state.figures.main.context.lineTo(i * state.figures.main.scale.width, cost[i])
-        }
-        // Restoring context
-        state.figures.main.context.restore()
-        state.figures.main.context.strokeStyle = '#000000'
-        state.figures.main.context.stroke()
-        state.figures.main.context.closePath()
-        // Drawing dates
+        // Drawing curves
+        this.props.data.map((log, ind) => {
+            // Getting observed data range
+            const data = log.data.slice(
+                Math.floor(log.data.length * state.data_range.start),
+                Math.ceil(log.data.length * state.data_range.end)
+            )
+            const data_amount = data.length
+            const values = Array.from(data, obj => obj.value)
+            // Changing context
+            state.figures.main.context.save()
+            state.figures.main.context.translate(state.figures.main.axes.x, state.figures.main.axes.y)
+            state.figures.main.context.scale(1, -state.figures.main.scale.height)
+            // Drawing plot
+            state.figures.main.context.beginPath()
+            state.figures.main.context.moveTo(0, values[0])
+            for (let i = 1; i < data_amount; ++i) {
+                state.figures.main.context.lineTo(i * state.figures.main.scale.width, values[i])
+            }
+            state.figures.main.context.restore()
+            state.figures.main.context.lineWidth = 2
+            state.figures.main.context.strokeStyle = colors[ind]
+            state.figures.main.context.stroke()
+            state.figures.main.context.closePath()
+            // Drawing legend
+            state.figures.main.context.font = '12px Arial'
+            state.figures.main.context.fillStyle = colors[ind]
+            state.figures.main.context.fillText(
+                log.strategy,
+                15,
+                state.figures.main.get_height() / this.props.data.length / 10 * (ind + 1)
+            )
+        })  // Restoring context
+        // Drawing dates axis
         state.figures.dates.context.beginPath()
         state.figures.dates.context.strokeStyle = '#000000'
-        // Drawing axis
         state.figures.dates.context.moveTo(
             0,
             state.figures.dates.get_height() * state.figures.dates.padding.top
@@ -165,8 +238,14 @@ export default class PlotDateValue extends React.Component {
         state.figures.dates.context.stroke()
         state.figures.dates.context.closePath()
         // Drawing data notches and dates
-        const step = Math.ceil(data_amount * 0.1)
-        for (let i = step; i < data_amount - step; i+=step) {
+        const max_dates = this.props.data.filter(
+            log => log.data.slice(
+                Math.floor(log.data.length * state.data_range.start),
+                Math.ceil(log.data.length * state.data_range.end)
+            ).length === max_data_amount
+        )[0].data
+        let step = Math.ceil(max_data_amount * 0.1)
+        for (let i = step; i < max_data_amount - step; i += step) {
             state.figures.dates.context.beginPath()
             state.figures.dates.context.moveTo(
                 i * state.figures.main.scale.width,
@@ -180,9 +259,39 @@ export default class PlotDateValue extends React.Component {
             state.figures.dates.context.closePath()
             state.figures.dates.context.font = '10px Arial'
             state.figures.dates.context.fillText(
-                data[i].date,
+                max_dates[i].date,
                 i * state.figures.main.scale.width - 25,
                 state.figures.dates.get_height() * (state.figures.dates.padding.top + 0.3)
+            )
+        }
+        // Drawing value scale
+        step = spread / (state.figures.main.grid.vertical.amount - 2)
+        for (let i = min_value; i <= max_value + step; i += step) {
+            state.figures.value.context.beginPath()
+            state.figures.value.context.moveTo(
+                state.figures.value.get_width() * (1 - state.figures.value.padding.right),
+                state.figures.value.get_height() * (
+                    1 - (i - min_value) / step / state.figures.main.grid.vertical.amount *
+                    state.figures.value.scale.height - state.figures.main.padding.bottom
+                )
+            )
+            state.figures.value.context.lineTo(
+                state.figures.value.get_width() * (0.9 - state.figures.value.padding.right),
+                state.figures.value.get_height() * (
+                    1 - (i - min_value) / step / state.figures.main.grid.vertical.amount *
+                    state.figures.value.scale.height - state.figures.main.padding.bottom
+                )
+            )
+            state.figures.value.context.stroke()
+            state.figures.value.context.closePath()
+            state.figures.value.context.font = '10px Arial'
+            state.figures.value.context.fillText(
+                `${Math.round((i / max_dates[0].value * 100 + Number.EPSILON) * 100) / 100}%`,
+                state.figures.value.get_width() * 0.05,
+                state.figures.value.get_height() * (
+                    1 - (i - min_value) / step / state.figures.main.grid.vertical.amount *
+                    state.figures.value.scale.height - state.figures.main.padding.bottom
+                ) + 3
             )
         }
         this.setState(state, callback)
@@ -241,46 +350,82 @@ export default class PlotDateValue extends React.Component {
                     })
                 }
             }
-        }
-        // Getting observed data range
-        const n = this.state.data.length
-        const data = this.state.data.slice(
-            Math.floor(n * this.state.data_range.start),
-            Math.ceil(n * this.state.data_range.end)
+        } // Select data with maximum length
+        const max_data_length = Math.max.apply(
+            null, this.props.data.map(
+                log => log.data.length
+            )
+        )
+        const max_data = this.props.data.filter(
+            log => log.data.length === max_data_length
+        )[0].data.slice(
+            Math.floor(max_data_length * this.state.data_range.start),
+            Math.ceil(max_data_length * this.state.data_range.end)
         )
         const context = this.state.figures.hit.context
-        context.clearRect(0, 0, this.state.figures.hit.get_width(), this.state.figures.hit.get_height())
+        context.clearRect(
+            0, 0,
+            this.state.figures.hit.get_width(),
+            this.state.figures.hit.get_height()
+        )
+        context.save()
         context.beginPath()
+        context.strokeStyle = '#696969'
+        context.setLineDash([5, 5])
         // Drawing horizontal line
         context.moveTo(0, y)
         context.lineTo(this.state.figures.hit.get_width(), y)
         // Drawing vertical line
-        // Segment hit check
-        const segment_width = this.state.figures.hit.get_width() / data.length
+        //// Segment hit check
+        const segment_width = this.state.figures.hit.get_width() / max_data.length
         const i = Math.floor(x / segment_width)
         context.moveTo(i * this.state.figures.main.scale.width, 0)
         context.lineTo(i * this.state.figures.main.scale.width, this.state.figures.hit.get_height())
         context.stroke()
         context.closePath()
-        // Data tooltips
-        const {date, cost, balance, stocks} = data[i]
-        // Drawing data point
-        context.beginPath()
-        context.arc(
-            i * this.state.figures.main.scale.width,
-            this.state.figures.main.axes.y - cost * this.state.figures.main.scale.height,
-            0.005 * this.state.figures.hit.get_width(),
-            0,
-            2 * Math.PI
-        )
-        context.stroke()
-        context.closePath()
-        this.setState({tooltips: {
-                date: date,
-                cost: cost,
-                balance: balance,
-                stocks: stocks,
-        }})
+        context.restore()
+        // Assigning cursor tooltips
+        const date = max_data[i].date
+        let tooltips = []
+        this.props.data.map(log => {
+            const data = log.data.slice(
+                Math.floor(log.data.length * this.state.data_range.start),
+                Math.ceil(log.data.length * this.state.data_range.end)
+            )
+            if (i in data) {
+                // Data tooltips
+                const {date, value, balance, stocks} = data[i]
+                // Drawing data point
+                context.beginPath()
+                context.arc(
+                    i * this.state.figures.main.scale.width,
+                    this.state.figures.main.axes.y - value * this.state.figures.main.scale.height,
+                    0.005 * this.state.figures.hit.get_width(),
+                    0,
+                    2 * Math.PI
+                )
+                context.stroke()
+                context.closePath()
+                tooltips.push({
+                    strategy: log.strategy,
+                    value: {
+                        currency: Math.round((value + Number.EPSILON) * 100) / 100,
+                        percent: Math.round((value / log.data[0].value * 100 + Number.EPSILON) * 100) / 100
+                    },
+                    balance: {
+                        currency: Math.round((balance + Number.EPSILON) * 100) / 100,
+                        percent: Math.round((balance / log.data[0].balance * 100 + Number.EPSILON) * 100) / 100
+                    },
+                    stocks: stocks,
+                })
+            }
+        })
+        this.setState({
+            tooltips: {
+                tooltips: tooltips,
+                date: date
+            }
+        })
     }
     // Clear coordinate pointer and tooltips if mouse pointer is out of canvas
     mouseOutHandlerMain() {
@@ -311,12 +456,17 @@ export default class PlotDateValue extends React.Component {
                 // Copying current data range to new object
                 let data_range = {}
                 Object.assign(data_range, this.state.data_range)
+                const max_data_length = Math.max.apply(
+                    null, this.props.data.map(
+                        log => log.data.length
+                    )
+                )
                 if (x_offset < 0) { // Moving data range start to the left
                     data_range.start = data_range.start + x_offset <= 0 ?
-                        0 : (data_range.end - (data_range.start + x_offset)) * this.state.data.length > 100 ?
+                        0 : (data_range.end - (data_range.start + x_offset)) * max_data_length > 10 ** 6 ?
                             data_range.start : data_range.start + x_offset
-                } else if (x_offset > 0) { // Moving data range start to the end
-                    data_range.start = (data_range.end - (data_range.start + x_offset)) * this.state.data.length < 5 ?
+                } else if (x_offset > 0) { // Moving data range start to the right
+                    data_range.start = (data_range.end - (data_range.start + x_offset)) * max_data_length < 5 ?
                         data_range.start : data_range.start + x_offset
                 } // Check if changes are visible (not visible on bounds)
                 if (data_range.start !== this.state.data_range.start) {
@@ -341,19 +491,18 @@ export default class PlotDateValue extends React.Component {
     }
     // After-render plot building
     componentDidMount() {
-        if (this.state.data.length > 5) {
+        if (this.is_enough_data) {
             let state = this.state
-            // Setting contexts
-            state.figures.main.context = state.figures.main.canvas.current.getContext('2d')
-            state.figures.hit.context = state.figures.hit.canvas.current.getContext('2d')
-            state.figures.dates.context = state.figures.dates.canvas.current.getContext('2d')
-            // Setting windows and canvases sizes
-            state.figures.main.set_window()
-            state.figures.hit.set_window()
-            state.figures.dates.set_window()
+            Object.keys(state.figures).map(key => {  // Setting up figures
+                state.figures[key].context = state.figures[key].canvas.current.getContext('2d')
+                state.figures[key].set_window()
+            })
             // Setting basic observed data range
-            const data_amount = state.data.length
-            const default_data_amount = 150
+            const data_amount = Math.min.apply(
+                null,
+                this.props.data.map(log => Object.keys(log.data).length)
+            )
+            const default_data_amount = 10 ** 6
             state.data_range = {
                 start: 1 - (data_amount <= default_data_amount ? data_amount : default_data_amount) / data_amount,
                 end: 1
@@ -362,17 +511,27 @@ export default class PlotDateValue extends React.Component {
             this.setState(state, this.plot)
         }
     }
-    componentDidUpdate() {
-
-    }
     render() {
-        if (this.state.data.length > 5) {
+        if (this.is_enough_data) {
             const tooltips = this.state.tooltips ?
                 <div className={'plot_date_value_tooltips'}>
                     <span>Date: {this.state.tooltips.date}</span>
-                    <span>Cost: {this.state.tooltips.cost}</span>
-                    <span>Balance: {this.state.tooltips.balance}</span>
-                    <span>Stocks: {this.state.tooltips.stocks}</span>
+                    {this.state.tooltips.tooltips.map(tooltip =>
+                        <ul key={tooltip.strategy} className={'plot_date_value_tooltip'}>
+                            <li>Strategy: {tooltip.strategy}</li>
+                            <li>Cost: {tooltip.value.percent}% ({tooltip.value.currency})</li>
+                            <li>Balance: {tooltip.balance.percent}% ({tooltip.balance.currency})</li>
+                            <li>Stocks:<table><tbody>
+                                {Object.entries(tooltip.stocks).map(([name, amount]) =>
+                                    <tr key={name}>
+                                        <td>{name}</td>
+                                        <td>{amount > 0 ? 'long ' + amount : amount < 0 ? 'short ' + -amount : amount}</td>
+                                    </tr>
+                                )}
+                            </tbody></table>
+                            </li>
+                        </ul>
+                    )}
                 </div> : null
             return (
                 <>
@@ -381,8 +540,7 @@ export default class PlotDateValue extends React.Component {
                         <canvas
                             ref={this.state.figures.main.canvas}
                             className={'canvas_main'}
-                        >
-                            Canvas tag is not supported by your browser.
+                        >Canvas tag is not supported by your browser.
                         </canvas>
                         <canvas
                             ref={this.state.figures.hit.canvas}
@@ -391,8 +549,7 @@ export default class PlotDateValue extends React.Component {
                             onMouseOut={this.mouseOutHandlerMain}
                             onMouseDown={this.mouseDownHandlerMain}
                             onMouseUp={this.mouseUpHandlerMain}
-                        >
-                            Canvas tag is not supported by your browser.
+                        >Canvas tag is not supported by your browser.
                         </canvas>
                         <canvas
                             ref={this.state.figures.dates.canvas}
@@ -400,14 +557,22 @@ export default class PlotDateValue extends React.Component {
                             onMouseMove={this.mouseMoveHandlerDates}
                             onMouseDown={this.mouseDownHandlerDates}
                             onMouseUp={this.mouseUpHandlerDates}
-                        >
-                            Canvas tag is not supported by your browser.
+                        >Canvas tag is not supported by your browser.
+                        </canvas>
+                        <canvas
+                            ref={this.state.figures.value.canvas}
+                            className={'canvas_value'}
+                        >Canvas tag is not supported by your browser.
                         </canvas>
                     </div>
                 </>
             )
         } else {
-            return (<div className={'plot_date_value_error_message'}>Not enough data to observe</div>)
+            return (
+                <div className={'plot_date_value_error_message'}>
+                    Not enough data to observe. At least 5 data points required.
+                </div>
+            )
         }
     }
 }

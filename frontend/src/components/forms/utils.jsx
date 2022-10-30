@@ -2,14 +2,6 @@ import React from 'react'
 import ListField from './ListField'
 
 
-export function form_serialize(form) {
-    let serialized = {}
-    form.elements.forEach(el => {
-
-    })
-}
-
-
 export function dtype_to_field(name, dtype) {
     switch (dtype) {
         case 'int':

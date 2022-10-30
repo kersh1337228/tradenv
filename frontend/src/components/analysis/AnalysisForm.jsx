@@ -1,5 +1,5 @@
 import React from 'react'
-import {dtype_to_field, form_serialize} from '../forms/utils'
+import {dtype_to_field} from '../forms/utils'
 
 
 export default class AnalysisForm extends React.Component {
@@ -127,6 +127,8 @@ export default class AnalysisForm extends React.Component {
             range_start: event.target.range_start.value,
             range_end: event.target.range_end.value,
             strategies: this.state.selected_strategies,
+            long_limit: event.target.long_limit.valueAsNumber,
+            short_limit: event.target.short_limit.valueAsNumber
         }
         this.state.strategies.filter(
             strategy => this.state.selected_strategies.includes(strategy.alias)
@@ -219,6 +221,14 @@ export default class AnalysisForm extends React.Component {
         // Step 5: Strategy arguments input
         const arguments_form = this.state.selected_strategies.length ?
             <div id={'id_strategies_args'}>
+                <div>
+                    <label htmlFor={'long_limit'}>Long limit</label>
+                    <input name={'long_limit'} min={0} type={'number'}/>
+                </div>
+                <div>
+                    <label htmlFor={'short_limit'}>Short limit</label>
+                    <input name={'short_limit'} min={0} type={'number'}/>
+                </div>
                 {this.state.strategies.filter(
                     strategy => this.state.selected_strategies.includes(strategy.alias)
                 ).map(strategy =>

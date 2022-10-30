@@ -1,5 +1,5 @@
 import React from 'react'
-import PlotFinancial from "../PlotFinancial/PlotFinancial";
+import PlotFinancial from "../../plots/PlotFinancial/PlotFinancial";
 
 
 export default class QuotesDetail extends React.Component {

@@ -19,8 +19,9 @@ class PortfolioSerializer(serializers.ModelSerializer):
 
     async def aupdate(self, slug: str):
         if await sync_to_async(self.is_valid)(raise_exception=True):
-            obj = await Portfolio.objects.aget(slug=slug)
-            await sync_to_async(obj.save)()
+            objs = Portfolio.objects.filter(slug=slug)
+            await objs.aupdate(**self.validated_data)
+            obj = await objs.afirst()
             return await sync_to_async(lambda: PortfolioSerializer(obj).data)()
 
     class Meta:

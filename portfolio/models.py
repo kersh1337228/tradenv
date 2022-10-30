@@ -89,7 +89,13 @@ class Portfolio(models.Model):
                     keys=all_quotes.keys()
                 )
             case 'dict':
-                return all_quotes
+                def dict_format(df):
+                    df.index = df.index.strftime('%Y-%m-%d')
+                    return df.transpose().to_dict()
+                return dict(zip(
+                    all_quotes.keys(),
+                    map(dict_format, all_quotes.values())
+                ))
 
     async def stocks_price_deltas(
             self,
@@ -99,13 +105,13 @@ class Portfolio(models.Model):
     ) -> list[dict]:
         async def async_generator():
             async for stock in self.stocks.select_related('quotes'):
-                first, last = stock.quotes.quotes[price][slice(range_start, range_end)][[0, -1]]
+                first, last = stock.quotes.quotes.loc[slice(range_start, range_end), price][[0, -1]]
                 yield {
                     'symbol': stock.quotes.symbol,
                     'name': stock.quotes.name,
-                    'percentage': round(last / first - 1, 2) * 100
+                    'percent': round((last / first - 1) * 100, 2)
                     if first else None,
-                    'numerical': round(last - first, 2)
+                    'currency': round(last - first, 2)
                 }
         return [price_delta async for price_delta in async_generator()]
 

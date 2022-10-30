@@ -7,29 +7,38 @@
     z-index: 0;
     display: grid;
     grid-auto-rows: minmax(min-content, max-content);
+    grid-auto-columns: minmax(min-content, max-content);
 }
 
 .plot_date_value_grid .canvas_main {
     grid-row-start: 1;
     grid-row-end: 2;
-    grid-column-start: 1;
-    grid-column-end: 2;
+    grid-column-start: 2;
+    grid-column-end: 3;
 }
 
 .plot_date_value_grid .canvas_hit {
     grid-row-start: 1;
     grid-row-end: 2;
-    grid-column-start: 1;
-    grid-column-end: 2;
+    grid-column-start: 2;
+    grid-column-end: 3;
 }
 
 .plot_date_value_grid .canvas_dates {
     grid-row-start: 2;
     grid-row-end: 3;
+    grid-column-start: 2;
+    grid-column-end: 3;
+    border: solid black 1px;
+    cursor: w-resize;
+}
+
+.plot_date_value_grid .canvas_value {
+    grid-row-start: 1;
+    grid-row-end: 2;
     grid-column-start: 1;
     grid-column-end: 2;
     border: solid black 1px;
-    cursor: w-resize;
 }
 
 .plot_date_value_tooltips {

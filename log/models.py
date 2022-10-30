@@ -12,9 +12,12 @@ class MultiIndexDataFrameField(models.JSONField):
     def from_db_value(self, value: None | str, expression, connection):
         if not value:
             return pd.DataFrame()
-        df = pd.read_json(
-            super().from_db_value(value, expression, connection)
-        ).set_index('level_0', append=True).reorder_levels((1, 0))
+        raws = super().from_db_value(value, expression, connection)
+        df = pd.concat(
+            objs=map(pd.read_json, raws.values()),
+            axis=0,
+            keys=raws.keys()
+        )
         return df
 
     def to_python(self, value: pd.DataFrame | None | str):
@@ -25,7 +28,7 @@ class MultiIndexDataFrameField(models.JSONField):
         return pd.DataFrame(super().to_python(value))
 
     def get_prep_value(self, value: pd.DataFrame):
-        return super().get_prep_value(value.reset_index(level=0).to_json())
+        return super().get_prep_value(value)
 
 
 class Log(models.Model):  # Analytical log storing full strategy application result
@@ -49,8 +52,9 @@ class Log(models.Model):  # Analytical log storing full strategy application res
     @async_to_sync
     async def get_price_deltas(self) -> dict:
         return {
-            'balance': {
-                strategy: {
+            'balance': [
+                {
+                    'strategy': strategy,
                     'percent': round(
                         (self.logs.loc[strategy].iloc[-1]['value'] /
                         self.logs.loc[strategy].iloc[0]['value'] - 1) * 100, 2
@@ -61,20 +65,22 @@ class Log(models.Model):  # Analytical log storing full strategy application res
                     )
                 }
                 for strategy in self.logs.index.levels[0]
-            },
+            ],
             'stocks': await self.portfolio.stocks_price_deltas(
                 self.range_start, self.range_end
             )
         }
 
     def get_logs(self) -> dict:
-        def transform(df):  # Logs proper formatting
-            df = df.xs(df.name) # Separating MultiIndex levels
+        def transform(df: pd.DataFrame):  # Logs proper formatting
+            df = df.xs(df.name).rename_axis('date') # Separating MultiIndex levels
             df.index = df.index.strftime('%Y-%m-%d')  # Changing TimeStamp to str
-            return df.transpose().to_dict()  # Serializing
-        return self.logs.groupby(  # Level-wise serialization
-            level=0
-        ).apply(transform).to_dict()
+            return df.reset_index().to_dict('records')  # Serializing
+        logs = self.logs.groupby(level=0).apply(
+            transform
+        ).to_frame().reset_index()
+        logs.columns = ('strategy', 'data')
+        return logs.to_dict('records')
 
     @async_to_sync
     async def get_stocks_quotes(self):

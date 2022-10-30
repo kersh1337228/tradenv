@@ -1,5 +1,5 @@
 import React from 'react'
-import ColorMixer from '../ColorMixer/ColorMixer'
+import ColorMixer from '../ColorMixer/ColorMixer.jsx'
 import './PlotFinancial.css'
 
 
@@ -156,9 +156,9 @@ export default class PlotFinancial extends React.Component {
         this.show_grid(state.figures.main)
         this.show_grid(state.figures.volume)
         // Getting observed data range
-        const n = Object.keys(state.data).length
+        const n = Object.keys(this.props.data).length
         const data = Object.fromEntries(
-            Object.entries(state.data).slice(
+            Object.entries(this.props.data).slice(
                 Math.floor(n * state.data_range.start),
                 Math.ceil(n * state.data_range.end)
             )
@@ -348,16 +348,19 @@ export default class PlotFinancial extends React.Component {
             }
         }
         // Getting observed data range
-        const n = Object.keys(this.state.data).length
+        const n = Object.keys(this.props.data).length
         const data = Object.fromEntries(
-            Object.entries(this.state.data).slice(
+            Object.entries(this.props.data).slice(
                 Math.floor(n * this.state.data_range.start),
                 Math.ceil(n * this.state.data_range.end)
             )
         )
         const context = this.state.figures.hit.context
         context.clearRect(0, 0, this.state.figures.hit.get_width(), this.state.figures.hit.get_height())
+        context.save()
         context.beginPath()
+        context.strokeStyle = '#696969'
+        context.setLineDash([5, 5])
         // Drawing horizontal line
         context.moveTo(0, y)
         context.lineTo(this.state.figures.hit.get_width(), y)
@@ -369,6 +372,7 @@ export default class PlotFinancial extends React.Component {
         context.lineTo((2 * i + 1.1) * segment_width / 2, this.state.figures.hit.get_height())
         context.stroke()
         context.closePath()
+        context.restore()
         // Data tooltips
         const [date, {open, high, low, close, volume}] = Object.entries(data)[i]
         this.setState({tooltips: {
@@ -422,10 +426,10 @@ export default class PlotFinancial extends React.Component {
                 Object.assign(data_range, this.state.data_range)
                 if (x_offset < 0) { // Moving data range start to the left
                     data_range.start = data_range.start + x_offset <= 0 ?
-                        0 : (data_range.end - (data_range.start + x_offset)) * Object.keys(this.state.data).length > 150 ?
+                        0 : (data_range.end - (data_range.start + x_offset)) * Object.keys(this.props.data).length > 10 ** 6 ?
                             data_range.start : data_range.start + x_offset
                 } else if (x_offset > 0) { // Moving data range start to the end
-                    data_range.start = (data_range.end - (data_range.start + x_offset)) * Object.keys(this.state.data).length < 5 ?
+                    data_range.start = (data_range.end - (data_range.start + x_offset)) * Object.keys(this.props.data).length < 5 ?
                         data_range.start : data_range.start + x_offset
                 } // Check if changes are visible (not visible on bounds)
                 if (data_range.start !== this.state.data_range.start) {
@@ -448,7 +452,7 @@ export default class PlotFinancial extends React.Component {
     }
     // After-render plot building
     componentDidMount() {
-        if (Object.keys(this.state.data).length > 5) {
+        if (Object.keys(this.props.data).length > 5) {
             let current = this
             $.ajax({
                 url: '/quotes/api/plot/indicators/list',
@@ -467,8 +471,8 @@ export default class PlotFinancial extends React.Component {
                     current.state.figures.hit.set_window()
                     current.state.figures.dates.set_window()
                     // Setting basic observed data range
-                    const data_amount = Object.keys(current.state.data).length
-                    const default_data_amount = 150
+                    const data_amount = Object.keys(current.props.data).length
+                    const default_data_amount = 10 ** 6
                     current.state.data_range = {
                         start: 1 - (data_amount <= default_data_amount ? data_amount : default_data_amount) / data_amount,
                         end: 1
@@ -491,8 +495,8 @@ export default class PlotFinancial extends React.Component {
             type: 'GET',
             data: {
                 symbol: current.symbol,
-                range_start: Object.keys(current.state.data)[0],
-                range_end: Object.keys(current.state.data)[Object.keys(current.state.data).length - 1],
+                range_start: Object.keys(current.props.data)[0],
+                range_end: Object.keys(current.props.data)[Object.keys(current.props.data).length - 1],
                 args: JSON.stringify(Object.fromEntries((new FormData(event.target.parentElement)).entries())),
             },
             success: function (response) {
@@ -522,7 +526,7 @@ export default class PlotFinancial extends React.Component {
         this.setState({indicators: indicators}, this.plot)
     }
     render() {
-        if (Object.keys(this.state.data).length > 5) {
+        if (Object.keys(this.props.data).length > 5) {
             const indicator_window = <div
                 className={'plot_financial_indicator_window'}
                 ref={this.indicatorWindow}
