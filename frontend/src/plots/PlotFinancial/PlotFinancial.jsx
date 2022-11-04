@@ -134,7 +134,7 @@ export default class PlotFinancial extends React.Component {
     //      <date:String>,
     //      (<open:Number>, <high:Number>, <low:Number>, <close:Number>, <volume:Number>)
     // )
-    plot() {
+    async plot() {
         let state = this.state
         // Clear canvases
         state.figures.main.context.clearRect(
@@ -416,7 +416,7 @@ export default class PlotFinancial extends React.Component {
         this.drag.main.state = false
     }
     //// Dates canvas
-    mouseMoveHandlerDates(event) {
+    async mouseMoveHandlerDates(event) {
         if (this.drag.dates.state) { // If mouse is held moves data range
             const x_offset = (this.drag.dates.position.x - (event.clientX - event.target.getBoundingClientRect().left)) /
                 (this.state.figures.dates.get_width() * 200)
@@ -472,7 +472,7 @@ export default class PlotFinancial extends React.Component {
                     current.state.figures.dates.set_window()
                     // Setting basic observed data range
                     const data_amount = Object.keys(current.props.data).length
-                    const default_data_amount = 10 ** 6
+                    const default_data_amount = 10 ** 3
                     current.state.data_range = {
                         start: 1 - (data_amount <= default_data_amount ? data_amount : default_data_amount) / data_amount,
                         end: 1

@@ -8,7 +8,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
     created = serializers.DateTimeField(format='%Y/%m/%d %H:%M', required=False)
     last_updated = serializers.DateTimeField(format='%Y/%m/%d %H:%M', required=False)
     slug = serializers.SlugField(validators=[], required=False)
-    stocks = StockInstanceSerializer(many=True, read_only=True, required=False)
+    stocks = serializers.SerializerMethodField(read_only=True, required=False)
 
     async def acreate(self):
         if await sync_to_async(self.is_valid)(raise_exception=True):
@@ -18,8 +18,10 @@ class PortfolioSerializer(serializers.ModelSerializer):
             )()
 
     async def aupdate(self, slug: str):
+        objs = Portfolio.objects.filter(slug=slug)
+        if self.initial_data['name'] == (await objs.afirst()).name:
+            self.initial_data.pop('name')
         if await sync_to_async(self.is_valid)(raise_exception=True):
-            objs = Portfolio.objects.filter(slug=slug)
             await objs.aupdate(**self.validated_data)
             obj = await objs.afirst()
             return await sync_to_async(lambda: PortfolioSerializer(obj).data)()
@@ -28,3 +30,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
         model = Portfolio
         exclude = ('id',)
         optional_fields = ('created', 'last_updated', 'slug')
+
+    def get_stocks(self, instance):
+        stocks = instance.stocks.order_by('priority')
+        return StockInstanceSerializer(stocks, many=True).data

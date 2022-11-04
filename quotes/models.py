@@ -1,5 +1,6 @@
 from django.db import models
 from django.http import Http404
+from django.core import validators as val
 import datetime
 import time
 import requests
@@ -143,8 +144,17 @@ class StockInstance(models.Model):  # Stock model used to create portfolios
         StockQuotes,
         on_delete=models.CASCADE,
         related_name='stock_quotes'
-    )
-    amount = models.PositiveSmallIntegerField(  # Current amount in the portfolio
+    )  # Current amount in the portfolio
+    amount = models.PositiveSmallIntegerField(
+        validators=[
+            val.MinValueValidator(1),
+        ],
         default=1,
+        null=False
+    )  # Stock priority => higher priority - first being taken into consideration
+    priority = models.PositiveSmallIntegerField(
+        validators=[
+            val.MinValueValidator(1),
+        ],
         null=False
     )

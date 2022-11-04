@@ -16,8 +16,8 @@ class Portfolio(models.Model):
     )
     balance = models.FloatField(
         validators=[
-            MinValueValidator(0.0),
-            MaxValueValidator(100000000.0)
+            MinValueValidator(0.),
+            MaxValueValidator(100000000.)
         ]
     )
     stocks = models.ManyToManyField(
@@ -25,6 +25,74 @@ class Portfolio(models.Model):
         related_name='portfolio_stocks',
         blank=True,
     )
+    # Stops and limits
+    long_limit = models.PositiveSmallIntegerField(  # Max simultaneously open longs amount
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100)
+        ],
+        default=None,
+        null=True,
+        blank=True
+    )
+    short_limit = models.PositiveSmallIntegerField(  # Max simultaneously open shorts amount
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100)
+        ],
+        default=None,
+        null=True,
+        blank=True
+    )
+    buy_stop = models.FloatField(  # Buy here or higher
+        validators=[
+            MinValueValidator(1.)
+        ],
+        default=None,
+        null=True,
+        blank=True
+    )
+    sell_stop = models.FloatField(  # Sell here or lower
+        validators=[
+            MinValueValidator(1.)
+        ],
+        default=None,
+        null=True,
+        blank=True
+    )
+    buy_limit = models.FloatField(  # Buy here or lower
+        validators=[
+            MinValueValidator(1.)
+        ],
+        default=None,
+        null=True,
+        blank=True
+    )
+    sell_limit = models.FloatField(  # Sell here or higher
+        validators=[
+            MinValueValidator(1.)
+        ],
+        default=None,
+        null=True,
+        blank=True
+    )
+    stop_loss = models.FloatField(  # Close position here or worse
+        validators=[
+            MinValueValidator(1.)
+        ],
+        default=None,
+        null=True,
+        blank=True
+    )
+    take_profit = models.FloatField(  # Close position here or better
+        validators=[
+            MinValueValidator(1.)
+        ],
+        default=None,
+        null=True,
+        blank=True
+    )
+    # Meta data
     created = models.DateTimeField(
         auto_now_add=True,
     )
@@ -43,6 +111,9 @@ class Portfolio(models.Model):
     ):
         self.slug = re.sub(r'[.\- ]+', '_', self.name.strip().lower())
         super().save(force_insert, force_update, using, update_fields)
+
+    def stocks_priority_reorder(self):
+        pass
 
     # Returns the earliest and latest dates available for stocks chosen
     async def get_quotes_dates(self) -> pd.DatetimeIndex:
@@ -72,14 +143,19 @@ class Portfolio(models.Model):
             )
             all_quotes = {
                 stock.quotes.symbol:
-                    stock.quotes.quotes.reindex(date_range).ffill().bfill()
-                async for stock in self.stocks.select_related('quotes')
+                    stock.quotes.quotes.reindex(
+                        pd.date_range(
+                            stock.quotes.quotes.index[0],
+                            stock.quotes.quotes.index[-1]
+                        )
+                    ).ffill().reindex(date_range)
+                async for stock in self.stocks.order_by('priority').select_related('quotes')
             }
         else:  # Just making DateTimeIndex slice
             all_quotes = {
                 stock.quotes.symbol:
                     stock.quotes.quotes[slice(range_start, range_end)]
-                async for stock in self.stocks.select_related('quotes')
+                async for stock in self.stocks.order_by('priority').select_related('quotes')
             }
         match _format:
             case 'dataframe':
@@ -97,23 +173,41 @@ class Portfolio(models.Model):
                     map(dict_format, all_quotes.values())
                 ))
 
-    async def stocks_price_deltas(
+    async def stocks_price_deltas(  # Stocks price changes in percent and currency for selected period
             self,
             range_start: datetime.date | pd.Timestamp | np.datetime64 | str = None,
             range_end: datetime.date | pd.Timestamp | np.datetime64 | str = None,
             price: Literal['open', 'high', 'low', 'close'] = 'close'
     ) -> list[dict]:
-        async def async_generator():
-            async for stock in self.stocks.select_related('quotes'):
-                first, last = stock.quotes.quotes.loc[slice(range_start, range_end), price][[0, -1]]
-                yield {
-                    'symbol': stock.quotes.symbol,
-                    'name': stock.quotes.name,
-                    'percent': round((last / first - 1) * 100, 2)
-                    if first else None,
-                    'currency': round(last - first, 2)
-                }
-        return [price_delta async for price_delta in async_generator()]
+        result = []
+        async for stock in self.stocks.select_related('quotes'):
+            first, last = stock.quotes.quotes.loc[
+                slice(range_start, range_end), price
+            ][[0, -1]]
+            result.append({
+                'symbol': stock.quotes.symbol,
+                'name': stock.quotes.name,
+                'percent': round((last / first - 1) * 100, 2)
+                if first else None,
+                'currency': round(last - first, 2)
+            })
+        return result
+
+    async def calculate_investment(  # Balance change for selected period
+            self,
+            range_start: datetime.date | pd.Timestamp | np.datetime64 | str = None,
+            range_end: datetime.date | pd.Timestamp | np.datetime64 | str = None
+    ):
+        result = 0.
+        async for stock in self.stocks.select_related('quotes'):
+            first, last = stock.quotes.quotes.loc[
+                slice(range_start, range_end), 'close'
+            ][[0, -1]]
+            result += (last - first) * stock.amount
+        return {
+            'percent': round((result / self.balance) * 100, 2),
+            'currency': round(result, 2)
+        }
 
     def __str__(self):
         return self.name

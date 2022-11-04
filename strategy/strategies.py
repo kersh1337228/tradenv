@@ -5,25 +5,24 @@ import pandas as pd
 from itertools import combinations
 from typing import Iterable, Literal
 import quotes.indicators as ind
+from asgiref.sync import async_to_sync
 
 
 def simple_periodic(
-        portfolio_quotes: pd.DataFrame,
-        balance: float,
+        portfolio,
         range_start: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
         range_end: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
-        long_limit: int = 10 ** 6,
-        short_limit: int = 10 ** 6,
         period_length: int = 3,
 ) -> pd.DataFrame:
+    portfolio_quotes = async_to_sync(portfolio.get_all_quotes)(_fill=True)
     symbols, date_range = (
         portfolio_quotes.index.levels[0],
         pd.date_range(range_start, range_end)
     )
     logs = pd.DataFrame(
         data={
-            'balance': (balance,),
-            'value': (balance,),
+            'balance': (portfolio.balance,),
+            'value': (portfolio.balance,),
             'stocks': (pd.Series(index=symbols, data=0),),
         },
         index=(date_range[period_length - 1],)
@@ -43,7 +42,7 @@ def simple_periodic(
                 )
                 if all((
                     current > prev,
-                    long_amount + 1 <= long_limit or
+                    long_amount + 1 <= portfolio.long_limit or
                     log['stocks'][symbol] + 1 <= 0,
                     log['balance'] >= current
                 )):
@@ -51,7 +50,7 @@ def simple_periodic(
                     log['balance'] -= current
                 elif all((
                     current < prev,
-                    short_amount - 1 >= -short_limit or
+                    short_amount - 1 >= -portfolio.short_limit or
                     log['stocks'][symbol] - 1 >= 0
                 )):
                     log['stocks'][symbol] -= 1
@@ -66,14 +65,11 @@ def simple_periodic(
 
 
 def ma_levels(
-        portfolio_quotes: pd.DataFrame,
-        balance: float,
+        portfolio,
         periods: Iterable[int],
         indicator: Literal['sma', 'ema', 'vwma'],
         range_start: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
         range_end: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
-        long_limit: int = 10 ** 6,
-        short_limit: int = 10 ** 6,
 ) -> pd.DataFrame:
     indicator = getattr(ind, indicator)
     def indicator_wrapper(price, period):
@@ -85,7 +81,9 @@ def ma_levels(
             indicator_wrapper('close', period)
         for period in periods
     }
-    portfolio_quotes = portfolio_quotes.groupby(
+    portfolio_quotes = async_to_sync(
+        portfolio.get_all_quotes
+    )(_fill=True).groupby(
         level=0, group_keys=False
     ).apply(
         lambda symbol: symbol.assign(**assigns)
@@ -99,8 +97,8 @@ def ma_levels(
     ).days))
     logs = pd.DataFrame(
         data={
-            'balance': (balance,),
-            'value': (balance,),
+            'balance': (portfolio.balance,),
+            'value': (portfolio.balance,),
             'stocks': (pd.Series(index=symbols, data=0),),
         },
         index=(date_range[skip] - date_range.freq,)
@@ -119,7 +117,7 @@ def ma_levels(
                     )
                     if all((
                         close_price > level_price,
-                        long_amount + 1 <= long_limit or
+                        long_amount + 1 <= portfolio.long_limit or
                         log['stocks'][symbol] + 1 <= 0,
                         log['balance'] >= close_price
                     )):
@@ -127,7 +125,7 @@ def ma_levels(
                         log['balance'] -= close_price
                     elif all((
                         close_price < level_price,
-                        short_amount - 1 >= -short_limit or
+                        short_amount - 1 >= -portfolio.short_limit or
                         log['stocks'][symbol] - 1 >= 0
                     )):
                         log['stocks'][symbol] -= 1
@@ -142,14 +140,11 @@ def ma_levels(
 
 
 def mutual_ma_positions(
-        portfolio_quotes: pd.DataFrame,
-        balance: float,
+        portfolio,
         periods: Iterable[int],
         indicator: Literal['sma', 'ema', 'vwma'],
         range_start: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
         range_end: str | datetime.datetime | pd.Timestamp | np.datetime64 = None,
-        long_limit: int = 10 ** 6,
-        short_limit: int = 10 ** 6,
 ) -> pd.DataFrame:
     indicator = getattr(ind, indicator)
     def indicator_wrapper(price, period):
@@ -163,7 +158,9 @@ def mutual_ma_positions(
             indicator_wrapper('close', period)
         for period in periods
     }
-    portfolio_quotes = portfolio_quotes.groupby(
+    portfolio_quotes = async_to_sync(
+        portfolio.get_all_quotes
+    )(_fill=True).groupby(
         level=0, group_keys=False
     ).apply(
         lambda symbol: symbol.assign(**assigns)
@@ -177,8 +174,8 @@ def mutual_ma_positions(
     ).days))
     logs = pd.DataFrame(
         data={
-            'balance': (balance,),
-            'value': (balance,),
+            'balance': (portfolio.balance,),
+            'value': (portfolio.balance,),
             'stocks': (pd.Series(index=symbols, data=0),),
         },
         index=(date_range[skip] - date_range.freq,)
@@ -198,7 +195,7 @@ def mutual_ma_positions(
                     )
                     if all((
                         l1_price > l2_price,
-                        long_amount + 1 <= long_limit or
+                        long_amount + 1 <= portfolio.long_limit or
                         log['stocks'][symbol] + 1 <= 0,
                         log['balance'] >= close_price
                     )):
@@ -206,7 +203,7 @@ def mutual_ma_positions(
                         log['balance'] -= close_price
                     elif all((
                         l1_price < l2_price,
-                        short_amount - 1 >= -short_limit or
+                        short_amount - 1 >= -portfolio.short_limit or
                         log['stocks'][symbol] - 1 >= 0
                     )):
                         log['stocks'][symbol] -= 1

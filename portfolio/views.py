@@ -1,6 +1,6 @@
-import datetime
 from rest_framework import generics
 from rest_framework.response import Response
+from rest_framework import parsers
 from log.models import Log
 from log.serializers import LogSerializer
 from portfolio.models import Portfolio
@@ -50,16 +50,15 @@ class PortfolioAPIView(
             status=201
         )
 
+    parser_classes = (parsers.JSONParser,)
+
     @async_to_sync
-    async def patch(self, request, *args, **kwargs):  # Update portfolio name or balance
+    async def patch(self, request, *args, **kwargs):  # Update portfolio settings
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             return Response(
                 data={
                     'portfolio': await PortfolioSerializer(
-                        data={
-                            'name': request.data.get('name').strip().capitalize(),
-                            'balance': request.data.get('balance')
-                        },
+                        data=request.data,
                         partial=True
                     ).aupdate(kwargs.get('slug'))
                 },
@@ -69,52 +68,55 @@ class PortfolioAPIView(
     @async_to_sync
     async def put(self, request, *args, **kwargs):  # Add, change amount of or delete stocks
         if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
-            portfolio = await Portfolio.objects.aget(
-                slug=kwargs.get('slug'),
+            portfolio = await Portfolio.objects.prefetch_related(
+                'stocks'
+            ).aget(  # Prefetching stocks m2m field
+                slug=kwargs.get('slug')
             )
             match kwargs.get('type'):  # Ejecting operation type
                 case 'add':  # Add 1 stock to portfolio
-                    symb = request.data.get('symbol', '')
+                    symbol = request.data.get('symbol')
                     if not await portfolio.stocks.filter(
-                            quotes__symbol=symb
+                        quotes__symbol=symbol
                     ).aexists():
                         await sync_to_async(portfolio.stocks.add)(
                             await StockInstance.objects.acreate(
                                 quotes=await StockQuotes.objects.aget(
-                                    symbol=symb
-                                )
+                                    symbol=symbol
+                                ),
+                                priority=await portfolio.stocks.acount() + 1
                             )
                         )
                         await sync_to_async(portfolio.save)()
-                case 'change_amount':  # Change amount of stock selected
+                case 'alter':  # Change amount of stock selected
                     errors = {}
                     try:
-                        amount = int(request.data.get('amount'))
-                        if amount <= 0:
-                            errors['amount'] = ['Stocks amount must be positive value.']
-                    except ValueError:
-                        errors['amount'] = ['Invalid value format.']
-                    if errors:
+                        priority = min(
+                            request.data.get('priority'),
+                            await portfolio.stocks.acount()
+                        )
+                        amount = request.data.get('amount')
+                        stock = await portfolio.stocks.aget(
+                            quotes__symbol=request.data.get('symbol')
+                        )
+                        if (stock.priority != priority):  # Reordering priorities
+                            await portfolio.stocks.filter(priority=priority).aupdate(
+                                priority=stock.priority
+                            )  # Just updating
+                        stock.priority = priority
+                        stock.amount = amount
+                        await sync_to_async(stock.save)()
+                    except AssertionError:
                         return Response(
                             data=errors,
                             status=400,
                         )
-                    else:
-                        await portfolio.stocks.filter(
-                            quotes=await StockQuotes.objects.aget(
-                                symbol=request.data.get('symbol')
-                            )
-                        ).aupdate(
-                            amount=request.data.get('amount')
-                        )
-                        portfolio.last_updated = datetime.datetime.now()
-                        await sync_to_async(portfolio.save)()
                 case 'remove':  # Remove stock from portfolio
-                    await portfolio.stocks.filter(
-                        quotes=await StockQuotes.objects.aget(
-                            symbol=request.data.get('symbol')
-                        ),
-                    ).adelete()
+                    stock = await portfolio.stocks.aget(  # Getting stock requested
+                        quotes__symbol=request.data.get('symbol')
+                    )
+                    portfolio.stocks.remove(stock)  # Removing m2m link
+                    stock.delete()  # Deleting model
             return Response(
                 data={
                     'portfolio': await sync_to_async(

@@ -1,6 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import LogListDetail from '../log/LogListDetail'
+import PortfolioStockDetail from "./PortfolioStockDetail";
 
 
 export default class PortfolioDetail extends React.Component {
@@ -22,16 +23,11 @@ export default class PortfolioDetail extends React.Component {
         this.stocks_search = this.stocks_search.bind(this)
         this.portfolio_delete = this.portfolio_delete.bind(this)
         this.stocks_add = this.stocks_add.bind(this)
-        this.show_change_amount = this.show_change_amount.bind(this)
-        this.hide_change_amount = this.hide_change_amount.bind(this)
-        this.stocks_change_amount = this.stocks_change_amount.bind(this)
+        this.stocks_alter = this.stocks_alter.bind(this)
         this.stocks_remove = this.stocks_remove.bind(this)
         // Input reference initialization
         this.searchRef = React.createRef()
         this.stockBlockRef = React.createRef()
-        this.nameRef = React.createRef()
-        this.balanceRef = React.createRef()
-        this.stocksAmountRef = React.createRef()
     }
 
     initial_request() {
@@ -72,7 +68,8 @@ export default class PortfolioDetail extends React.Component {
         }
     }
 
-    portfolio_update() {
+    portfolio_update(event) {
+        event.preventDefault()
         let current = this
         $.ajax({
             url: `/portfolio/api/update/${this.state.portfolio.slug}`,
@@ -80,10 +77,21 @@ export default class PortfolioDetail extends React.Component {
             headers: {  // Sending CSRF token not to get blocked
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
             },
-            data: {
-                name: this.nameRef.current.value,
-                balance: this.balanceRef.current.value
-            },
+            contentType: 'application/json',
+            data: JSON.stringify(
+                Object.fromEntries(
+                    $(event.target).serializeArray().map(
+                        pair => [
+                            pair.name,
+                            pair.value.length ?
+                                $.isNumeric(pair.value) ?
+                                    Number(pair.value) :
+                                    pair.value :
+                                null
+                        ]
+                    )
+                )
+            ),
             success: function (response) {
                 current.setState({
                     portfolio: response.portfolio,
@@ -145,9 +153,8 @@ export default class PortfolioDetail extends React.Component {
             headers: {
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
             },
-            data: {
-                symbol: event.target.id
-            },
+            contentType: 'application/json',
+            data: JSON.stringify({symbol: event.target.id}),
             success: function (response) {
                 current.setState({
                     portfolio: response.portfolio
@@ -161,41 +168,49 @@ export default class PortfolioDetail extends React.Component {
         })
     }
 
-    show_change_amount(event) {
-        let stocks_config = this.state.stocks_config
-        stocks_config[event.target.id] = true
-        this.setState({
-            stocks_config: stocks_config
-        })
-    }
-
-    hide_change_amount(event) {
-        let stocks_config = this.state.stocks_config
-        delete stocks_config[event.target.id]
-        this.setState({
-            stocks_config: stocks_config
-        })
-    }
-
-    stocks_change_amount(event) {
+    stocks_alter(stock, priority, amount) {
         let current = this
         $.ajax({
-            url: `/portfolio/api/detail/${this.state.portfolio.slug}/stocks/change_amount`,
+            url: `/portfolio/api/detail/${this.state.portfolio.slug}/stocks/alter`,
             type: 'PUT',
             headers: {
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
             },
-            data: {
-                symbol: event.target.id,
-                amount: current.stocksAmountRef.current.value,
-            },
+            contentType: 'application/json',
+            data: JSON.stringify({
+                symbol: stock.props.stock.quotes.symbol,
+                priority: priority,
+                amount: amount
+            }),
             success: function (response) {
-                // Disabling config mode
-                let stocks_config = current.state.stocks_config
-                delete stocks_config[event.target.id]
+                current.setState({
+                    portfolio: response.portfolio
+                }, () => {
+                    stock.setState({config: false})
+                })
+            },
+            error: function (response) {
+                stock.setState({
+                    config: true,
+                    errors: response.responseJSON
+                })
+            }
+        })
+    }
+
+    stocks_remove(symbol) {
+        let current = this
+        $.ajax({
+            url: `/portfolio/api/detail/${this.state.portfolio.slug}/stocks/remove`,
+            type: 'PUT',
+            headers: {
+                'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
+            },
+            contentType: 'application/json',
+            data: JSON.stringify({symbol: symbol}),
+            success: function (response) {
                 current.setState({
                     portfolio: response.portfolio,
-                    stocks_config: stocks_config,
                 })
             },
             error: function (response) {
@@ -206,132 +221,141 @@ export default class PortfolioDetail extends React.Component {
         })
     }
 
-    stocks_remove(event) {
-        if (confirm(`Do you really want to delete the ${event.target.id} stock from your portfolio?`)) {
-            let current = this
-            $.ajax({
-                url: `/portfolio/api/detail/${this.state.portfolio.slug}/stocks/remove`,
-                type: 'PUT',
-                headers: {
-                    'X-CSRFToken': document.cookie.match(
-                        /csrftoken=([\w]+)[;]?/
-                    )[1],
-                },
-                data: {
-                    symbol: event.target.id,
-                },
-                success: function (response) {
-                    current.setState({
-                        portfolio: response.portfolio,
-                    })
-                },
-                error: function (response) {
-                    current.setState({
-                        errors: response.responseJSON
-                    })
-                }
-            })
-        }
-    }
-
     componentDidMount() {
         this.initial_request()
     }
 
     render() {
         try {
-            // Checking the config mode
-            let config = this.state.config ?
-                <div className={'portfolio_detail_config_panel'}>
-                    <span className="config_button" id="portfolio_config_cancel"
-                          onClick={() => {this.setState({config: false, errors: {},})}}>Cancel</span>
-                    <span className="config_button" id="portfolio_config_confirm"
-                          onClick={this.portfolio_update}>Confirm</span>
-                </div> : <div className={'portfolio_detail_config_panel'}>
-                    <span className="config_button" id="portfolio_config"
-                          onClick={() => {this.setState({config: true,})}}>Configure</span>
-                    <span className="config_button" id="portfolio_delete"
-                          onClick={this.portfolio_delete}>Delete</span>
-                </div>
             let main_fields = !this.state.config ?
                 <>
                     <h1 className="portfolio_detail_name">
                         {this.state.portfolio.name}
                     </h1>
-                    <div className="portfolio_detail_balance">
-                        Balance: {this.state.portfolio.balance} $
+                    <div className={'portfolio_detail_config_panel'}>
+                        <button className="config_button"
+                                id="portfolio_config"
+                                onClick={() => {
+                                    this.setState({config: true})
+                                }}>Configure
+                        </button>
+                        <button className="config_button"
+                                id="portfolio_delete"
+                                onClick={this.portfolio_delete}
+                                style={{color: 'red'}}>Delete
+                        </button>
                     </div>
+                    <table className="portfolio_detail_details">
+                        <tbody>
+                            <tr>
+                                <td>Balance:</td>
+                                <td>{this.state.portfolio.balance ?
+                                    this.state.portfolio.balance : '-'} $</td>
+                            </tr>
+                            <tr>
+                                <td>Max long number: </td>
+                                <td>{this.state.portfolio.long_limit ?
+                                    this.state.portfolio.long_limit : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Max short number: </td>
+                                <td>{this.state.portfolio.short_limit ?
+                                    this.state.portfolio.short_limit : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Buy stop:</td>
+                                <td>{this.state.portfolio.buy_stop ?
+                                    this.state.portfolio.buy_stop : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Sell stop:</td>
+                                <td>{this.state.portfolio.sell_stop ?
+                                    this.state.portfolio.sell_stop : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Buy limit:</td>
+                                <td>{this.state.portfolio.buy_limit ?
+                                    this.state.portfolio.buy_limit : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Sell limit:</td>
+                                <td>{this.state.portfolio.sell_limit ?
+                                    this.state.portfolio.sell_limit : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Stop loss:</td>
+                                <td>{this.state.portfolio.stop_loss ?
+                                    this.state.portfolio.stop_loss : '-'}</td>
+                            </tr>
+                            <tr>
+                                <td>Take profit:</td>
+                                <td>{this.state.portfolio.take_profit ?
+                                    this.state.portfolio.take_profit : '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </> :
-                <>
-                    {'name' in this.state.errors ? <ul>
-                        {this.state.errors.name.map(error =>
-                            <li key={error}>{error}</li>
-                        )}
-                    </ul> : null}
-                    <input className="portfolio_detail_name" ref={this.nameRef}
-                           defaultValue={this.state.portfolio.name} />
-                    {'balance' in this.state.errors ? <ul>
-                        {this.state.errors.balance.map(error =>
-                            <li key={error}>{error}</li>
-                        )}
-                    </ul> : null}
-                    <input className="portfolio_detail_balance" ref={this.balanceRef}
-                           defaultValue={this.state.portfolio.balance} />
-                </>
+                <form onSubmit={this.portfolio_update}>
+                    {[
+                        ['name', 'Name'], ['balance', 'Balance'],
+                        ['long_limit', 'Max long number'], ['short_limit', 'Max short number'],
+                        ['buy_stop', 'Buy stop'], ['sell_stop', 'Sell stop'],
+                        ['buy_limit', 'Buy limit'], ['sell_limit', 'Sell limit'],
+                        ['stop_loss', 'Stop loss'], ['take_profit', 'Take profit']
+                    ].map(([fname, alias]) =>
+                        <div id={`portfolio_detail_${fname}`} key={fname}>
+                            {fname in this.state.errors ? <ul>
+                                {this.state.errors[fname].map(error =>
+                                    <li key={error}>{error}</li>
+                                )}
+                            </ul> : null}
+                            <label htmlFor={fname}>{alias}</label>
+                            <input name={fname} defaultValue={this.state.portfolio[fname]} />
+                        </div>
+                    )}
+                    <div className={'portfolio_detail_config_panel'}>
+                        <button className="config_button"
+                            id="portfolio_config_cancel"
+                            onClick={() => {
+                                this.setState({config: false, errors: {}})
+                            }}>Cancel
+                        </button>
+                        <button className="config_button"
+                              id="portfolio_config_confirm"
+                              type={'submit'}
+                        >Confirm
+                        </button>
+                    </div>
+                </form>
             // Checking whether there are stocks in portfolio
             let portfolio_stocks = Object.keys(this.state.portfolio.stocks).length ?
-                <div className={'portfolio_detail_portfolio_stocks_list'}>
-                    <ul className="portfolio_stocks_header">
-                        <li className="portfolio_stocks_origin_symbol">Symbol</li>
-                        <li className="portfolio_stocks_origin_name">Name</li>
-                        <li className="portfolio_stocks_amount">Amount</li>
-                        <li className="portfolio_stocks_price">Price $</li>
-                        <li className="portfolio_stocks_change">Change $</li>
-                        <li className="portfolio_stocks_change_percent">Change %</li>
-                        <li className="portfolio_stocks_volume">Volume</li>
-                    </ul>
-                    {this.state.portfolio.stocks.map(stock =>
-                        <ul className="portfolio_stocks" key={stock.quotes.symbol}>
-                            <li className="portfolio_stocks_origin_symbol">{stock.quotes.symbol}</li>
-                            <li className="portfolio_stocks_origin_name">
-                                <Link to={'/quotes/detail/' + stock.quotes.symbol}>{stock.quotes.name}</Link>
-                            </li>
-                            {stock.quotes.symbol in this.state.stocks_config ?
-                                <li className="portfolio_stocks_amount">
-                                    {'amount' in this.state.errors ? <ul>
-                                        {this.state.errors.amount.map(error =>
-                                            <li key={error}>{error}</li>
-                                        )}
-                                    </ul> : null}
-                                    <input name={'portfolio_stocks_amount_change'}
-                                           defaultValue={stock.amount} ref={this.stocksAmountRef} />
-                                </li> :
-                                <li className="portfolio_stocks_amount">{stock.amount}</li>
-                            }
-                            <li className="quotes_list_detail_price">{stock.quotes.tendency.quotes.close}</li>
-                            <li className="quotes_list_detail_change">{stock.quotes.tendency.change}</li>
-                            <li className="quotes_list_detail_change_percent">{stock.quotes.tendency.change_percent}</li>
-                            <li className="quotes_list_detail_volume">{stock.quotes.tendency.quotes.volume}</li>
-                            <li className="portfolio_stocks_edit_menu">...
-                                {stock.quotes.symbol in this.state.stocks_config ?
-                                    <ul>
-                                        <li id={stock.quotes.symbol}
-                                         onClick={this.hide_change_amount}>Cancel</li>
-                                        <li id={stock.quotes.symbol}
-                                            onClick={this.stocks_change_amount}>Confirm</li>
-                                    </ul> :
-                                    <ul>
-                                        <li id={stock.quotes.symbol}
-                                        onClick={this.show_change_amount}>Change amount</li>
-                                        <li id={stock.quotes.symbol}
-                                            onClick={this.stocks_remove}>Delete</li>
-                                    </ul>
-                                }
-                            </li>
-                        </ul>
-                    )}
-                </div>
-                : <span>No stocks yet</span>
+                <table className={'portfolio_detail_portfolio_stocks_list'}>
+                    <thead>
+                        <tr className="portfolio_stocks_header">
+                            <th className="portfolio_stocks_priority">Priority</th>
+                            <th className="portfolio_stocks_symbol">Symbol</th>
+                            <th className="portfolio_stocks_name">Name</th>
+                            <th className="portfolio_stocks_amount">Amount</th>
+                            <th className="portfolio_stocks_price">Close price $</th>
+                            <th className="portfolio_stocks_change">Change $</th>
+                            <th className="portfolio_stocks_change_percent">Change %</th>
+                            <th className="portfolio_stocks_volume">Volume</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {this.state.portfolio.stocks.map(
+                            stock => <PortfolioStockDetail
+                                stock={stock}
+                                key={stock.symbol}
+                                alter={this.stocks_alter}
+                                remove={this.stocks_remove}
+                            />
+                        )}
+                    </tbody>
+                </table>
+                : <span className={'portfolio_detail_portfolio_stocks_list'}>
+                    No stocks yet
+                </span>
             // Checking whether there are logs where the portfolio is mentioned in
             let logs = this.state.logs.length ?
                 <div className="portfolio_detail_log_list">
@@ -363,7 +387,6 @@ export default class PortfolioDetail extends React.Component {
             // Rendering component
             return (
                 <div className="portfolio_detail_block">
-                    {config}
                     <div className="portfolio_detail">
                         {main_fields}
                         <div className="portfolio_detail_created">Created: {this.state.portfolio.created}</div>
@@ -385,7 +408,6 @@ export default class PortfolioDetail extends React.Component {
                             </div>
                         </div>
                         <div className="portfolio_detail_logs">
-                            <h2>Logs</h2>
                             {logs}
                         </div>
                     </div>

@@ -6,7 +6,7 @@ from log.models import Log
 from portfolio.models import Portfolio
 from portfolio.serializers import PortfolioSerializer
 from asgiref.sync import async_to_sync, sync_to_async
-import strategy.utils as strats
+import strategy.strategies as strats
 import multiprocessing
 import asyncio
 # import django
@@ -79,10 +79,6 @@ class AnalysisAPIView(
                     slug=request.data.get('portfolio')
                 )
             )
-            balance, portfolio_quotes = (
-                portfolio.balance,
-                await portfolio.get_all_quotes(_fill=True)
-            )
             with multiprocessing.Pool(min((
                 len(strategies), multiprocessing.cpu_count()
             ))) as pool:
@@ -90,12 +86,9 @@ class AnalysisAPIView(
                     pool.apply_async(
                         getattr(strats, sname),
                         kwds={
-                            'portfolio_quotes': portfolio_quotes,
-                            'balance': balance,
+                            'portfolio': portfolio,
                             'range_start': range_start,
-                            'range_end': range_end,
-                            'long_limit': long_limit if long_limit else 10 ** 6,
-                            'short_limit': short_limit if short_limit else 10 ** 6,
+                            'range_end': range_end
                         } | request.data.get(sname)
                     ) for sname in strategies
                 )

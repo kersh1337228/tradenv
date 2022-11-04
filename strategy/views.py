@@ -1,6 +1,6 @@
 from rest_framework import generics
 from rest_framework.response import Response
-from .utils import choices
+from .strategies import choices
 
 
 class StrategyListAPIView(

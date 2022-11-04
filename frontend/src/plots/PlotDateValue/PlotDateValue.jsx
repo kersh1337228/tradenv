@@ -124,7 +124,7 @@ export default class PlotDateValue extends React.Component {
         this.mouseUpHandlerDates = this.mouseUpHandlerDates.bind(this)
     }
     // Date-value type plot (<date:String>, <value:Number>)
-    plot(callback) {
+    async plot(callback) {
         let state = this.state
         // Clear
         state.figures.main.context.clearRect(
@@ -345,9 +345,7 @@ export default class PlotDateValue extends React.Component {
                     data_range.end = data_range.start + (this.state.data_range.end - this.state.data_range.start)
                 } // Check if changes are visible (not visible on bounds)
                 if (data_range.start !== this.state.data_range.start && data_range.end !== this.state.data_range.end) {
-                    this.setState({data_range: data_range}, () => {
-                        this.plot() // Redrawing plot with new data range
-                    })
+                    this.setState({data_range: data_range}, this.plot)
                 }
             }
         } // Select data with maximum length
@@ -448,7 +446,7 @@ export default class PlotDateValue extends React.Component {
         this.drag.main.state = false
     }
     //// Dates canvas
-    mouseMoveHandlerDates(event) {
+    async mouseMoveHandlerDates(event) {
         if (this.drag.dates.state) { // If mouse is held moves data range
             const x_offset = (this.drag.dates.position.x - (event.clientX - event.target.getBoundingClientRect().left)) /
                 (this.state.figures.dates.get_width() * 200)
@@ -470,9 +468,7 @@ export default class PlotDateValue extends React.Component {
                         data_range.start : data_range.start + x_offset
                 } // Check if changes are visible (not visible on bounds)
                 if (data_range.start !== this.state.data_range.start) {
-                    this.setState({data_range: data_range}, () => {
-                        this.plot() // Redrawing plot with new data range
-                    })
+                    this.setState({data_range: data_range}, this.plot)
                 }
             }
         }
@@ -502,7 +498,7 @@ export default class PlotDateValue extends React.Component {
                 null,
                 this.props.data.map(log => Object.keys(log.data).length)
             )
-            const default_data_amount = 10 ** 6
+            const default_data_amount = 10 ** 3
             state.data_range = {
                 start: 1 - (data_amount <= default_data_amount ? data_amount : default_data_amount) / data_amount,
                 end: 1
