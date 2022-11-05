@@ -8,9 +8,6 @@ from portfolio.serializers import PortfolioSerializer
 from asgiref.sync import async_to_sync, sync_to_async
 import strategy.strategies as strats
 import multiprocessing
-import asyncio
-# import django
-# django.setup()
 
 
 class GenericView(generics.ListAPIView):

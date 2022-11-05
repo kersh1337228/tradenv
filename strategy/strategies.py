@@ -6,6 +6,9 @@ from itertools import combinations
 from typing import Iterable, Literal
 import quotes.indicators as ind
 from asgiref.sync import async_to_sync
+# Multiprocessing required actions
+import django
+django.setup()
 
 
 def simple_periodic(

@@ -43,6 +43,7 @@
 
 .plot_date_value_tooltips {
     z-index: 1;
+    position: absolute;
     display: flex;
     flex-direction: row;
     gap: 10px 10px;

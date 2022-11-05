@@ -35,23 +35,24 @@ export default class PortfolioDetail extends React.Component {
         const symbol = window.location.href.match(
             /\/portfolio\/detail\/([\w]+)/
         )[1]
-        current.setState({loading: true})
-        $.ajax({
-            url: `/portfolio/api/detail/${symbol}`,
-            type: 'GET',
-            data: {},
-            success: function (response) {
-                current.setState({
-                    portfolio: response.portfolio,
-                    logs: response.logs,
-                    loading: false
-                })
-            },
-            error: function (response) {
-                if (response.status === 404) {
-                    window.location.href = '/notfound'
+        this.setState({loading: true}, () => {
+            $.ajax({
+                url: `/portfolio/api/detail/${symbol}`,
+                type: 'GET',
+                data: {},
+                success: function (response) {
+                    current.setState({
+                        portfolio: response.portfolio,
+                        logs: response.logs,
+                        loading: false
+                    })
+                },
+                error: function (response) {
+                    if (response.status === 404) {
+                        window.location.href = '/notfound'
+                    }
                 }
-            }
+            })
         })
     }
 

@@ -115,8 +115,8 @@ class PortfolioAPIView(
                     stock = await portfolio.stocks.aget(  # Getting stock requested
                         quotes__symbol=request.data.get('symbol')
                     )
-                    portfolio.stocks.remove(stock)  # Removing m2m link
-                    stock.delete()  # Deleting model
+                    await sync_to_async(portfolio.stocks.remove)(stock)  # Removing m2m link
+                    await sync_to_async(stock.delete)()  # Deleting model
             return Response(
                 data={
                     'portfolio': await sync_to_async(

@@ -8,7 +8,8 @@ export default class QuotesList extends React.Component {
         super(props)
         this.state = {
             quotes: [],
-            pagination: {}
+            pagination: {},
+            loading: false
         }
         // Methods binding
         this.initial_request = this.initial_request.bind(this)
@@ -18,18 +19,21 @@ export default class QuotesList extends React.Component {
 
     initial_request() {
         let current = this
-        $.ajax({
-            url: '/quotes/api/list',
-            type: 'GET',
-            data: {},
-            success: function (response) {
-                current.setState({
-                    quotes: response.quotes,
-                    pagination: response.pagination
-                })
-            },
-            error: function (response) {}
+        this.setState({loading: true}, () => {
+            $.ajax({
+                url: '/quotes/api/list',
+                type: 'GET',
+                data: {},
+                success: function (response) {
+                    current.setState({
+                        quotes: response.quotes,
+                        pagination: response.pagination,
+                        loading: false
+                    })
+                },
+                error: function (response) {}
 
+            })
         })
     }
 
@@ -97,18 +101,20 @@ export default class QuotesList extends React.Component {
                     )}</div>
                     {this.state.pagination ? <Pagination pagination={this.state.pagination} /> : null}
                 </div>
-            ) :
+            ) : this.state.loading ? (
+                <h3>Loading...</h3>
+            ) : (
                 <span>
                     No stocks yet.
                     <span
                         onClick={this.parse_quotes_request}
-                        style={{'color': 'red'}}> Update the data.
+                        style={{color: 'red', cursor: 'pointer'}}> Update the data.
                     </span>
                 </span>
+            )
         } catch(error) {
-            quotes_list = <span>{this.state.quotes}</span>
+            quotes_list = <h1>Some error occurred during loading stocks</h1>
         }
-        // Returning render
         return(
             <div className={'quote_list_block'}>
                 <div className={'quotes_search'}>

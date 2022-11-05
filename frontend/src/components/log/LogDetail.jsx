@@ -88,7 +88,7 @@ export default class LogDetail extends React.Component {
                         {Object.entries(this.state.log.stocks_quotes).map(([symbol, quotes]) =>
                             <div key={symbol}>
                                 <h4>{symbol}</h4>
-                                <PlotFinancial data={quotes} />
+                                <PlotFinancial data={quotes} symbol={symbol} />
                             </div>
                         )}
                     </div>

@@ -8,8 +8,8 @@ class Figure {
     constructor(
         window_size_width, window_size_height,
         padding_left=0, padding_top=0, padding_right=0, padding_bottom=0,
-        grid_vertical_amount=10, grid_vertical_color='#000000', grid_vertical_width=1,
-        grid_horizontal_amount=10, grid_horizontal_color='#000000', grid_horizontal_width=1,
+        grid_vertical_amount=0, grid_vertical_color='#000000', grid_vertical_width=1,
+        grid_horizontal_amount=0, grid_horizontal_color='#000000', grid_horizontal_width=1,
         canvas_density=1
     ) {
         this.window_size = {
@@ -50,15 +50,51 @@ class Figure {
     get_width() {
         return this.window_size.width * this.canvas_density
     }
+    get_padded_width() {
+        return this.get_width() * (1 - this.padding.left - this.padding.right)
+    }
     // Canvas actual height
     get_height() {
         return this.window_size.height * this.canvas_density
     }
+    get_padded_height() {
+        return this.get_height() * (1 - this.padding.top - this.padding.bottom)
+    }
     set_window() {
+        this.context = this.canvas.current.getContext('2d')
         this.canvas.current.style.width = `${this.window_size.width}px`
         this.canvas.current.style.height = `${this.window_size.height}px`
         this.canvas.current.width = this.get_width()
         this.canvas.current.height = this.get_height()
+    }
+    // Show translucent grid
+    show_grid() {
+        // Drawing horizontal
+        this.context.save()
+        this.context.lineWidth = this.grid.horizontal.width * this.canvas_density
+        this.context.strokeStyle = this.grid.horizontal.color
+        this.context.beginPath()
+        for (let i = 1; i <= this.grid.horizontal.amount; ++i) {
+            const y = this.get_height() * i / this.grid.horizontal.amount
+            this.context.moveTo(0, y)
+            this.context.lineTo(this.get_width(), y)
+        }
+        this.context.stroke()
+        this.context.closePath()
+        this.context.restore()
+        // Drawing vertical
+        this.context.save()
+        this.context.lineWidth = this.grid.vertical.width * this.canvas_density
+        this.context.strokeStyle = this.grid.vertical.color
+        this.context.beginPath()
+        for (let i = 1; i <= this.grid.vertical.amount; ++i) {
+            const x = this.get_width() * i / this.grid.vertical.amount
+            this.context.moveTo(x, 0)
+            this.context.lineTo(x, this.get_height())
+        }
+        this.context.stroke()
+        this.context.closePath()
+        this.context.restore()
     }
 }
 
@@ -70,31 +106,47 @@ export default class PlotFinancial extends React.Component {
         super(props)
         // Mutable data (influence on render)
         this.state = {
-            data: props.data,
             figures: {
-                main: new Figure(
+                main: new Figure(  // Japanese candles
                     850, 480,
                     0, 0.1, 0, 0.1,
                     10, '#d9d9d9', 1,
                     10, '#d9d9d9', 1,
                     1
                 ),
-                volume: new Figure(
+                volume: new Figure(  // Volume histogram
                     850, 192,
                     0, 0.1, 0, 0,
                     10, '#d9d9d9', 1,
                     4, '#d9d9d9', 1,
                     1
                 ),
-                hit: new Figure(850, 672),
-                dates: new Figure(850, 48, 0, 0.1)
+                hit: new Figure(850, 672),  // Upper layer dashed cross
+                dates: new Figure(850, 48),  // Bottom dates scale
+                dates_tooltip: new Figure(850, 48),  // Bottom dates scale current date tooltip
+                value: new Figure(48, 480),  // Left value scale
+                value_tooltip: new Figure(48, 480), // Left value scale current price tooltip
+                volume_value: new Figure(48, 192),  // Left volume scale,
+                volume_value_tooltip: new Figure(48, 192) // Left value scale current volume tooltip
             },
             data_range: null,
             tooltips: null,
             indicators: {
                 available: [],
                 active: [],
-                selected: null,
+                selected: null
+            },
+            meta_data: {  // Precalculated data based on observed range
+                data: null,
+                indicators: null,
+                value: {
+                    min: null,
+                    max: null
+                },
+                volume: {
+                    min: null,
+                    max: null
+                }
             }
         }
         // Data range navigation
@@ -114,9 +166,12 @@ export default class PlotFinancial extends React.Component {
                 }
             }
         }
+        this.max_data = 1000  // Max data points on chart simultaneously
+        this.font = '10px Arial'
         this.indicatorWindow = React.createRef() // Indicator window interface block
-        this.symbol = props.symbol  // Quotes id
         // Methods binding
+        this.recalculate_metadata = this.recalculate_metadata.bind(this)
+        this.plot = this.plot.bind(this)
         this.get_indicator = this.get_indicator.bind(this)
         this.setIndicatorColor = this.setIndicatorColor.bind(this)
         // UI events binding
@@ -130,195 +185,295 @@ export default class PlotFinancial extends React.Component {
         this.mouseDownHandlerDates = this.mouseDownHandlerDates.bind(this)
         this.mouseUpHandlerDates = this.mouseUpHandlerDates.bind(this)
     }
-    // Financial type plot (
-    //      <date:String>,
-    //      (<open:Number>, <high:Number>, <low:Number>, <close:Number>, <volume:Number>)
-    // )
-    async plot() {
-        let state = this.state
-        // Clear canvases
-        state.figures.main.context.clearRect(
-            0, 0,
-            state.figures.main.get_width(),
-            state.figures.main.get_height()
-        )
-        state.figures.volume.context.clearRect(
-            0, 0,
-            state.figures.volume.get_width(),
-            state.figures.volume.get_height()
-        )
-        state.figures.dates.context.clearRect(
-            0, 0,
-            state.figures.dates.get_width(),
-            state.figures.dates.get_height()
-        )
-        // Drawing grid on plot canvases
-        this.show_grid(state.figures.main)
-        this.show_grid(state.figures.volume)
-        // Getting observed data range
-        const n = Object.keys(this.props.data).length
-        const data = Object.fromEntries(
-            Object.entries(this.props.data).slice(
-                Math.floor(n * state.data_range.start),
-                Math.ceil(n * state.data_range.end)
-            )
-        )
-        // Rescaling
-        const active_indicators_data = [].concat(...Array.from(
-            state.indicators.active, indicator => indicator.data.slice(
-                Math.floor(n * state.data_range.start),
-                Math.ceil(n * state.data_range.end)
-            )  // Active indicators data
-        )).filter(value => value !== null)
-        const [lows, highs, volumes] = [  // Quotes data
-            Array.from(Object.values(data), obj => obj.low),
-            Array.from(Object.values(data), obj => obj.high),
-            Array.from(Object.values(data), obj => obj.volume),
+    recalculate_metadata(data_range) {
+        const [start, end] = [
+            Math.floor(this.props.data.length * data_range.start),
+            Math.ceil(this.props.data.length * data_range.end)
         ]
+        const [data, indicators] = [
+            this.props.data.slice(start, end),
+            this.state.indicators.active.filter(
+                indicator => indicator.active
+            ).map(
+                indicator => indicator.data.slice(start, end)
+            )
+        ]
+        const [min_value, max_value] = [
+            Math.min.apply(
+                null, Array.from(
+                    Object.values(data), obj => obj.low
+                ).concat(...indicators.filter(
+                    value => value !== null
+                ))
+            ),
+            Math.max.apply(
+                null, Array.from(
+                    Object.values(data), obj => obj.high
+                ).concat(...indicators.filter(
+                    value => value !== null
+                ))
+            )
+        ]
+        const volumes = Array.from(
+            Object.values(data), obj => obj.volume
+        )
+        const [min_volume, max_volume] = [
+            Math.min.apply(null, volumes),
+            Math.max.apply(null, volumes)
+        ]
+        let state = this.state
+        state.data_range = data_range
+        // Rescaling
         //// Main
-        state.figures.main.scale.height = (
-            state.figures.main.get_height() * (1 - state.figures.main.padding.bottom - state.figures.main.padding.top)) /
-            Math.abs(Math.max.apply(null, highs.concat(
-                active_indicators_data
-            )) - Math.min.apply(null, lows.concat(
-                active_indicators_data
-            )))
-        state.figures.main.scale.width = state.figures.volume.scale.width = (
-            state.figures.main.get_width() * (1 - state.figures.main.padding.left - state.figures.main.padding.right)) / (highs.length)
+        state.figures.main.scale.height =
+            state.figures.main.get_padded_height() / (max_value - min_value)
+        state.figures.main.scale.width =
+            state.figures.main.get_padded_width() / data.length
         //// Volume
-        state.figures.volume.scale.height = (
-            state.figures.volume.get_height() * (1 - state.figures.volume.padding.bottom - state.figures.volume.padding.top)) /
-            Math.abs(Math.max.apply(null, volumes) - Math.min.apply(null, volumes))
+        state.figures.volume.scale.height =
+            state.figures.volume.get_padded_height() / (max_volume - min_volume)
+        state.figures.volume.scale.width =
+            state.figures.volume.get_padded_width() / data.length
         // Moving coordinates system
         //// Main
-        state.figures.main.axes.y = Math.max.apply(null, highs) *
-            state.figures.main.scale.height + state.figures.main.padding.top * state.figures.main.get_height()
-        state.figures.main.axes.x = state.figures.main.padding.left * state.figures.main.get_width()
-        state.figures.main.context.save()
-        state.figures.main.context.translate(state.figures.main.axes.x, state.figures.main.axes.y)
-        state.figures.main.context.scale(1, -state.figures.main.scale.height)
+        state.figures.main.axes.y =
+            max_value * state.figures.main.scale.height +
+            state.figures.main.padding.top * state.figures.main.get_height()
+        state.figures.main.axes.x =
+            state.figures.main.padding.left * state.figures.main.get_width()
         //// Volume
-        state.figures.volume.axes.y = Math.max.apply(null, volumes) *
-            state.figures.volume.scale.height + state.figures.volume.padding.top * state.figures.volume.get_height()
-        state.figures.volume.axes.x = state.figures.volume.padding.left * state.figures.volume.get_width()
-        state.figures.volume.context.save()
-        state.figures.volume.context.translate(state.figures.volume.axes.x, state.figures.volume.axes.y)
-        state.figures.volume.context.scale(1, -state.figures.volume.scale.height)
+        state.figures.volume.axes.y =
+            max_volume * state.figures.volume.scale.height +
+            state.figures.volume.padding.top * state.figures.volume.get_height()
+        state.figures.volume.axes.x =
+            state.figures.volume.padding.left * state.figures.volume.get_width()
+        // Meta data
+        state.meta_data = {
+            data: data,
+            indicators: {
+                data: indicators,
+                styles: this.state.indicators.active.filter(
+                    indicator => indicator.active
+                ).map(indicator => indicator.style)
+            },
+            value: {
+                min: min_value,
+                max: max_value,
+                spread: max_value - min_value
+            },
+            volume: {
+                min: min_volume,
+                max: max_volume,
+                spread: max_volume - min_volume
+            }
+        }
+        this.setState(state, this.plot)
+    }
+
+    async plot() {
+        // Clear canvases
+        Object.values(this.state.figures).forEach(
+            figure => {
+                figure.context.clearRect(
+                    0, 0,
+                    figure.get_width(),
+                    figure.get_height()
+                )
+                figure.show_grid()
+            }
+        )
+        // Moving coordinates system
+        //// Main
+        this.state.figures.main.context.save()
+        this.state.figures.main.context.translate(
+            this.state.figures.main.axes.x,
+            this.state.figures.main.axes.y
+        )
+        this.state.figures.main.context.scale(
+            1,
+            -this.state.figures.main.scale.height
+        )
+        //// Volume
+        this.state.figures.volume.context.save()
+        this.state.figures.volume.context.translate(
+            this.state.figures.volume.axes.x,
+            this.state.figures.volume.axes.y
+        )
+        this.state.figures.volume.context.scale(
+            1,
+            -this.state.figures.volume.scale.height
+        )
         // Drawing plots
-        const data_amount = Object.keys(data).length
+        const data_amount = this.state.meta_data.data.length
         for (let i = 0; i < data_amount; ++i) {
-            const {open, high, low, close, volume} = Object.values(data)[i]
+            const {date, open, high, low, close, volume} = this.state.meta_data.data[i]
             const style = close - open > 0 ? '#53e9b5' : '#da2c4d'
             // Candle
-            state.figures.main.context.beginPath()
-            state.figures.main.context.strokeStyle = style
-            state.figures.main.context.moveTo((2 * i + 1.1) * state.figures.main.scale.width / 2, low)
-            state.figures.main.context.lineTo((2 * i + 1.1) * state.figures.main.scale.width / 2, high)
-            state.figures.main.context.stroke()
-            state.figures.main.context.fillStyle = style
-            state.figures.main.context.fillRect(
-                (i + 0.1) * this.state.figures.main.scale.width ,
-                open,
-                this.state.figures.main.scale.width * 0.9,
-                close - open
+            //// Shadow
+            this.state.figures.main.context.beginPath()
+            this.state.figures.main.context.moveTo(
+                (2 * i + 1.1) * this.state.figures.main.scale.width / 2,
+                low
             )
-            state.figures.main.context.closePath()
+            this.state.figures.main.context.lineTo(
+                (2 * i + 1.1) * this.state.figures.main.scale.width / 2,
+                high
+            )
+            this.state.figures.main.context.strokeStyle = style
+            this.state.figures.main.context.stroke()
+            //// Body
+            if (close - open) {  // Rectangle (non-empty body)
+                this.state.figures.main.context.fillStyle = style
+                this.state.figures.main.context.fillRect(
+                    (i + 0.1) * this.state.figures.main.scale.width,
+                    open,
+                    this.state.figures.main.scale.width * 0.9,
+                    close - open
+                )
+            } else {  // Line (empty body)
+                this.state.figures.main.context.moveTo(
+                    (i + 0.1) * this.state.figures.main.scale.width,
+                    open
+                )
+                this.state.figures.main.context.lineTo(
+                    (i + 1) * this.state.figures.main.scale.width,
+                    close
+                )
+            }
+            this.state.figures.main.context.closePath()
             // Volume
-            state.figures.volume.context.fillStyle = style
-            state.figures.volume.context.fillRect(
+            this.state.figures.volume.context.fillStyle = style
+            this.state.figures.volume.context.fillRect(
                 (i + 0.1) * this.state.figures.main.scale.width ,
                 0,
                 this.state.figures.volume.scale.width * 0.9,
-                volume
+                volume + 1  // Adding one not to get zero height
             )
-        }
+        }  // Restoring context
+        this.state.figures.main.context.restore()
+        this.state.figures.volume.context.restore()
         // Drawing indicators
-        const indicator_data = Array.from(
-            state.indicators.active.filter(indicator => indicator.active),
-            indicator => [
-                indicator.data.slice(
-                    Math.floor(n * state.data_range.start),
-                    Math.ceil(n * state.data_range.end)
-                ), indicator.style
+        for (let i = 0; i < this.state.meta_data.indicators.data.length; ++i) {
+            const [data, style] = [
+                this.state.meta_data.indicators.data[i],
+                this.state.meta_data.indicators.styles[i]
             ]
-        )
-        for (const [data, style] of indicator_data) {
-            state.figures.main.context.beginPath()
-            state.figures.main.context.strokeStyle = style.color
-            state.figures.main.context.lineWidth = 2 / state.figures.main.scale.height
-            let i = data.indexOf(data.find(element => element !== null))
-            state.figures.main.context.moveTo((2 * i + 1.1) * state.figures.main.scale.width / 2, data[i])
-            while (i < data_amount) {
-                ++i
-                state.figures.main.context.lineTo((2 * i + 1.1) * state.figures.main.scale.width / 2, data[i])
+            this.state.figures.main.context.save()
+            this.state.figures.main.context.translate(
+                this.state.figures.main.axes.x,
+                this.state.figures.main.axes.y
+            )
+            this.state.figures.main.context.scale(
+                1,
+                -this.state.figures.main.scale.height
+            )
+            this.state.figures.main.context.beginPath()
+            let j = data.indexOf(data.find(element => element !== null))
+            this.state.figures.main.context.moveTo(
+                (2 * j + 1.1) * this.state.figures.main.scale.width / 2,
+                data[j]
+            )
+            while (j < data_amount) {
+                ++j
+                this.state.figures.main.context.lineTo(
+                    (2 * j + 1.1) * this.state.figures.main.scale.width / 2,
+                    data[j]
+                )
             }
-            state.figures.main.context.stroke()
-            state.figures.main.context.closePath()
+            this.state.figures.main.context.restore()
+            this.state.figures.main.context.strokeStyle = style.color
+            this.state.figures.main.context.lineWidth = 1
+            this.state.figures.main.context.stroke()
+            this.state.figures.main.context.closePath()
         }
         // Drawing dates
-        state.figures.dates.context.beginPath()
-        state.figures.dates.context.strokeStyle = '#000000'
-        // Drawing axis
-        state.figures.dates.context.moveTo(
-            0,
-            state.figures.dates.get_height() * state.figures.dates.padding.top
-        )
-        state.figures.dates.context.lineTo(
-            state.figures.dates.get_width(),
-            state.figures.dates.get_height() * state.figures.dates.padding.top
-        )
-        state.figures.dates.context.stroke()
-        state.figures.dates.context.closePath()
-        // Drawing data notches and dates
-        const step = Math.ceil(data_amount * 0.1)
-        for (let i = step; i < data_amount - step; i+=step) {
-            state.figures.dates.context.beginPath()
-            state.figures.dates.context.moveTo(
-                (2 * i + 1.1) * state.figures.main.scale.width / 2,
-                state.figures.dates.get_height() * state.figures.dates.padding.top
+        this.state.figures.dates.context.beginPath()
+        this.state.figures.dates.context.strokeStyle = '#000000'
+        let step = Math.ceil(data_amount * 0.1)
+        this.state.figures.dates.context.font = this.font
+        for (let i = step; i <= data_amount - step * 0.5; i += step) {
+            this.state.figures.dates.context.beginPath()
+            this.state.figures.dates.context.moveTo(
+                (2 * i + 1.1) * this.state.figures.main.scale.width / 2 - 1,
+                this.state.figures.dates.get_height() * this.state.figures.dates.padding.top
             )
-            state.figures.dates.context.lineTo(
-                (2 * i + 1.1) * state.figures.main.scale.width / 2,
-                state.figures.dates.get_height() * (state.figures.dates.padding.top + 0.1)
+            this.state.figures.dates.context.lineTo(
+                (2 * i + 1.1) * this.state.figures.main.scale.width / 2 - 1,
+                this.state.figures.dates.get_height() * (this.state.figures.dates.padding.top + 0.1)
             )
-            state.figures.dates.context.stroke()
-            state.figures.dates.context.closePath()
-            state.figures.dates.context.font = '10px Arial'
-            state.figures.dates.context.fillText(
-                Object.keys(data)[i],
-                (2 * i + 1.1) * state.figures.main.scale.width / 2 - 25,
-                state.figures.dates.get_height() * (state.figures.dates.padding.top + 0.3)
+            this.state.figures.dates.context.stroke()
+            this.state.figures.dates.context.closePath()
+            this.state.figures.dates.context.fillText(
+                this.state.meta_data.data[i].date,
+                (2 * i + 1.1) * this.state.figures.main.scale.width / 2 - 25,
+                this.state.figures.dates.get_height() * (this.state.figures.dates.padding.top + 0.3)
             )
         }
-        // Restoring context
-        state.figures.main.context.restore()
-        state.figures.volume.context.restore()
-    }
-    // Show translucent grid
-    show_grid(figure) {
-        const context = figure.context
-        // Drawing horizontal
-        context.lineWidth = figure.grid.horizontal.width * figure.canvas_density
-        context.strokeStyle = figure.grid.horizontal.color
-        context.beginPath()
-        for (let i = 1; i <= figure.grid.horizontal.amount; ++i) {
-            const y = figure.get_height() * i / figure.grid.horizontal.amount
-            context.moveTo(0, y)
-            context.lineTo(this.state.figures.main.get_width(), y)
+        // Drawing value scale
+        step = this.state.meta_data.value.spread / (this.state.figures.main.grid.horizontal.amount - 2)
+        this.state.figures.value.context.font = this.font
+        for (let i = this.state.meta_data.value.min; i < this.state.meta_data.value.max + step; i += step) {
+            this.state.figures.value.context.beginPath()
+            this.state.figures.value.context.moveTo(
+                this.state.figures.value.get_width() * (1 - this.state.figures.value.padding.right),
+                this.state.figures.value.get_height() * (
+                    1 - (i - this.state.meta_data.value.min) / step /
+                    this.state.figures.main.grid.horizontal.amount *
+                    this.state.figures.value.scale.height - this.state.figures.main.padding.bottom
+                ) - 1
+            )
+            this.state.figures.value.context.lineTo(
+                this.state.figures.value.get_width() * (0.9 - this.state.figures.value.padding.right),
+                this.state.figures.value.get_height() * (
+                    1 - (i - this.state.meta_data.value.min) / step /
+                    this.state.figures.main.grid.horizontal.amount *
+                    this.state.figures.value.scale.height - this.state.figures.main.padding.bottom
+                ) - 1
+            )
+            this.state.figures.value.context.stroke()
+            this.state.figures.value.context.closePath()
+            this.state.figures.value.context.fillText(
+                Math.round((i + Number.EPSILON) * 100) / 100,
+                this.state.figures.value.get_width() * 0.05,
+                this.state.figures.value.get_height() * (
+                    1 - (i - this.state.meta_data.value.min) / step /
+                    this.state.figures.main.grid.horizontal.amount *
+                    this.state.figures.value.scale.height - this.state.figures.main.padding.bottom
+                ) + 3
+            )
         }
-        context.stroke()
-        context.closePath()
-        // Drawing vertical
-        context.lineWidth = figure.grid.vertical.width * figure.canvas_density
-        context.strokeStyle = figure.grid.vertical.color
-        context.beginPath()
-        for (let i = 1; i <= figure.grid.vertical.amount; ++i) {
-            const x = figure.get_width() * i / figure.grid.vertical.amount
-            context.moveTo(x, 0)
-            context.lineTo(x, figure.get_height())
+        // Drawing volume scale
+        const scale = this.state.meta_data.volume.spread / this.state.figures.volume.get_padded_height()
+        step = this.state.figures.volume.get_height() / this.state.figures.volume.grid.horizontal.amount
+        this.state.figures.volume_value.context.font = this.font
+        for (let i = step; i < this.state.figures.volume.get_height(); i += step) {
+            this.state.figures.volume_value.context.beginPath()
+            this.state.figures.volume_value.context.moveTo(
+                this.state.figures.volume_value.get_width() * (
+                    1 - this.state.figures.volume_value.padding.right
+                ),
+                this.state.figures.volume_value.get_height() * (
+                    1 - this.state.figures.volume_value.padding.bottom
+                ) - i
+            )
+            this.state.figures.volume_value.context.lineTo(
+                this.state.figures.volume_value.get_width() * (
+                    0.9 - this.state.figures.volume_value.padding.right
+                ),
+                this.state.figures.volume_value.get_height() * (
+                    1 - this.state.figures.volume_value.padding.bottom
+                ) - i
+            )
+            this.state.figures.volume_value.context.stroke()
+            this.state.figures.volume_value.context.closePath()
+            this.state.figures.volume_value.context.fillText(
+                `${Math.round(((i * scale + this.state.meta_data.volume.min) / 10 ** 6 + Number.EPSILON) * 100) / 100}M`,
+                this.state.figures.volume_value.get_width() * 0.05,
+                this.state.figures.volume_value.get_height() * (
+                    1 - this.state.figures.volume_value.padding.bottom
+                ) - i + 3
+            )
         }
-        context.stroke()
-        context.closePath()
     }
     // Mouse events
     //// Main canvas
@@ -328,79 +483,183 @@ export default class PlotFinancial extends React.Component {
             event.clientX - event.target.getBoundingClientRect().left,
             event.clientY - event.target.getBoundingClientRect().top
         ]
-        if (this.drag.main.state) { // If mouse is held moves data range
-            const x_offset = (x - this.drag.main.position.x) /
-                (this.state.figures.hit.get_width() * 200)
-            if (x_offset) {
-                // Copying current data range to new object
-                let data_range = {}
-                Object.assign(data_range, this.state.data_range)
-                if (x_offset < 0) { // Moving window to the left and data range to the right
-                    data_range.end = data_range.end - x_offset >= 1 ? 1 : data_range.end - x_offset
-                    data_range.start = data_range.end - (this.state.data_range.end - this.state.data_range.start)
-                } else if (x_offset > 0) { // Moving window to the right and data range to the left
-                    data_range.start = data_range.start - x_offset <= 0 ? 0 : data_range.start - x_offset
-                    data_range.end = data_range.start + (this.state.data_range.end - this.state.data_range.start)
-                } // Check if changes are visible (not visible on bounds)
-                if (data_range.start !== this.state.data_range.start && data_range.end !== this.state.data_range.end) {
-                    this.setState({data_range: data_range}, this.plot)
+        if (x >= 0 && y >= 0) {
+            if (this.drag.main.state) { // If mouse is held moves data range
+                const x_offset = (x - this.drag.main.position.x) /
+                    (this.state.figures.hit.get_width() * 200)
+                if (x_offset) {
+                    // Copying current data range to new object
+                    let data_range = {}
+                    Object.assign(data_range, this.state.data_range)
+                    if (x_offset < 0) { // Moving window to the left and data range to the right
+                        data_range.end = data_range.end - x_offset >= 1 ? 1 : data_range.end - x_offset
+                        data_range.start = data_range.end - (this.state.data_range.end - this.state.data_range.start)
+                    } else if (x_offset > 0) { // Moving window to the right and data range to the left
+                        data_range.start = data_range.start - x_offset <= 0 ? 0 : data_range.start - x_offset
+                        data_range.end = data_range.start + (this.state.data_range.end - this.state.data_range.start)
+                    } // Check if changes are visible (not visible on bounds)
+                    if (data_range.start !== this.state.data_range.start && data_range.end !== this.state.data_range.end) {
+                        this.recalculate_metadata(data_range)
+                    }
                 }
             }
+            this.state.figures.hit.context.clearRect(
+                0, 0,
+                this.state.figures.hit.get_width(),
+                this.state.figures.hit.get_height()
+            )
+            this.state.figures.hit.context.save()
+            this.state.figures.hit.context.beginPath()
+            this.state.figures.hit.context.strokeStyle = '#696969'
+            this.state.figures.hit.context.setLineDash([5, 5])
+            // Drawing horizontal line
+            this.state.figures.hit.context.moveTo(0, y)
+            this.state.figures.hit.context.lineTo(this.state.figures.hit.get_width(), y)
+            // Drawing value tooltip
+            let grid_step = this.state.figures.main.get_height() /
+                this.state.figures.main.grid.horizontal.amount
+            this.state.figures.value_tooltip.context.clearRect(
+                0, 0,
+                this.state.figures.value_tooltip.get_width(),
+                this.state.figures.value_tooltip.get_height()
+            )
+            this.state.figures.value_tooltip.context.save()
+            this.state.figures.value_tooltip.context.fillStyle = '#323232'
+            this.state.figures.value_tooltip.context.fillRect(
+                0,
+                y - grid_step / 4,
+                this.state.figures.value_tooltip.get_width(),
+                grid_step / 2
+            )
+            this.state.figures.value_tooltip.context.font = this.font
+            this.state.figures.value_tooltip.context.fillStyle = '#ffffff'
+            this.state.figures.value_tooltip.context.fillText(
+                Math.round((
+                    this.state.meta_data.value.spread /
+                    this.state.figures.main.get_padded_height() * (
+                        this.state.figures.main.get_height() - y -
+                        this.state.figures.main.get_padded_height() / 8
+                    ) + this.state.meta_data.value.min + Number.EPSILON) * 100) / 100,
+                this.state.figures.value_tooltip.get_width() * 0.05,
+                y + 3
+            )
+            this.state.figures.value_tooltip.context.restore()
+            // Drawing volume tooltip
+            grid_step = this.state.figures.volume.get_height() /
+                this.state.figures.volume.grid.horizontal.amount
+            const yv = y - this.state.figures.main.get_height()
+            this.state.figures.volume_value_tooltip.context.clearRect(
+                0, 0,
+                this.state.figures.volume_value_tooltip.get_width(),
+                this.state.figures.volume_value_tooltip.get_height()
+            )
+            this.state.figures.volume_value_tooltip.context.save()
+            this.state.figures.volume_value_tooltip.context.fillStyle = '#323232'
+            this.state.figures.volume_value_tooltip.context.fillRect(
+                0,
+                yv - grid_step / 4,
+                this.state.figures.volume_value_tooltip.get_width(),
+                grid_step / 2
+            )
+            this.state.figures.volume_value_tooltip.context.font = this.font
+            this.state.figures.volume_value_tooltip.context.fillStyle = '#ffffff'
+            this.state.figures.volume_value_tooltip.context.fillText(
+                `${Math.round((
+                    (
+                        this.state.meta_data.volume.spread /
+                        this.state.figures.volume.get_padded_height() * (
+                            this.state.figures.volume.get_height() - yv
+                        ) + this.state.meta_data.volume.min
+                    ) / 10 ** 6 + Number.EPSILON) * 100) / 100}M`,
+                this.state.figures.volume_value_tooltip.get_width() * 0.05,
+                yv + 3
+            )
+            this.state.figures.volume_value_tooltip.context.restore()
+            // Segment hit check
+            const segment_width = this.state.figures.hit.get_width() / this.state.meta_data.data.length
+            const i = Math.floor(x / segment_width)
+            // Drawing vertical line
+            this.state.figures.hit.context.moveTo(
+                (2 * i + 1.1) * segment_width / 2,
+                0
+            )
+            this.state.figures.hit.context.lineTo(
+                (2 * i + 1.1) * segment_width / 2,
+                this.state.figures.hit.get_height()
+            )
+            this.state.figures.hit.context.stroke()
+            this.state.figures.hit.context.closePath()
+            this.state.figures.hit.context.restore()
+            // Drawing date tooltip
+            const {date, open, high, low, close, volume} = this.state.meta_data.data[i]
+            this.state.figures.dates_tooltip.context.clearRect(
+                0, 0,
+                this.state.figures.dates_tooltip.get_width(),
+                this.state.figures.dates_tooltip.get_height()
+            )
+            this.state.figures.dates_tooltip.context.save()
+            this.state.figures.dates_tooltip.context.fillStyle = '#323232'
+            this.state.figures.dates_tooltip.context.fillRect(
+                (2 * i + 1.1) * segment_width / 2 - 30,
+                0,
+                60,
+                this.state.figures.dates_tooltip.get_height() * 0.4
+            )
+            this.state.figures.dates_tooltip.context.font = this.font
+            this.state.figures.dates_tooltip.context.fillStyle = '#ffffff'
+            this.state.figures.dates_tooltip.context.fillText(
+                date,
+                (2 * i + 1.1) * this.state.figures.main.scale.width / 2 - 25,
+                this.state.figures.dates_tooltip.get_height() * (this.state.figures.dates_tooltip.padding.top + 0.3)
+            )
+            this.state.figures.dates_tooltip.context.restore()
+            // Data tooltips
+            this.setState({tooltips: {
+                    open: open,
+                    high: high,
+                    low: low,
+                    close: close,
+                    volume: Math.round((volume / 10 ** 6 + Number.EPSILON) * 100) / 100,
+                    indicators: this.state.indicators.active.filter(indicator => indicator.active).map(
+                        indicator => Object.fromEntries(
+                            [
+                                ['displayed_name', indicator.displayed_name],
+                                ['data', indicator.data.slice(
+                                    Math.floor(this.props.data.length * this.state.data_range.start),
+                                    Math.ceil(this.props.data.length * this.state.data_range.end)
+                                )[i]],
+                            ]
+                        )
+                    )
+                }})
         }
-        // Getting observed data range
-        const n = Object.keys(this.props.data).length
-        const data = Object.fromEntries(
-            Object.entries(this.props.data).slice(
-                Math.floor(n * this.state.data_range.start),
-                Math.ceil(n * this.state.data_range.end)
-            )
-        )
-        const context = this.state.figures.hit.context
-        context.clearRect(0, 0, this.state.figures.hit.get_width(), this.state.figures.hit.get_height())
-        context.save()
-        context.beginPath()
-        context.strokeStyle = '#696969'
-        context.setLineDash([5, 5])
-        // Drawing horizontal line
-        context.moveTo(0, y)
-        context.lineTo(this.state.figures.hit.get_width(), y)
-        // Segment hit check
-        const segment_width = this.state.figures.hit.get_width() / Object.keys(data).length
-        const i = Math.floor(x / segment_width)
-        // Drawing vertical line
-        context.moveTo((2 * i + 1.1) * segment_width / 2, 0)
-        context.lineTo((2 * i + 1.1) * segment_width / 2, this.state.figures.hit.get_height())
-        context.stroke()
-        context.closePath()
-        context.restore()
-        // Data tooltips
-        const [date, {open, high, low, close, volume}] = Object.entries(data)[i]
-        this.setState({tooltips: {
-            date: date,
-            open: open,
-            high: high,
-            low: low,
-            close: close,
-            volume: volume,
-            indicators: this.state.indicators.active.filter(indicator => indicator.active).map(
-                indicator => Object.fromEntries(
-                    [
-                        ['displayed_name', indicator.displayed_name],
-                        ['data', indicator.data.slice(
-                            Math.floor(n * this.state.data_range.start),
-                            Math.ceil(n * this.state.data_range.end)
-                        )[i]],
-                    ]
-                )
-            )
-        }})
     }
+
     // Clear coordinate pointer and tooltips if mouse pointer is out of canvas
     mouseOutHandlerMain() {
-        const context = this.state.figures.hit.context
-        context.clearRect(0, 0, this.state.figures.hit.get_width(), this.state.figures.hit.get_height())
+        this.state.figures.hit.context.clearRect(
+            0, 0,
+            this.state.figures.hit.get_width(),
+            this.state.figures.hit.get_height()
+        )
+        this.state.figures.value_tooltip.context.clearRect(
+            0, 0,
+            this.state.figures.value_tooltip.get_width(),
+            this.state.figures.value_tooltip.get_height()
+        )
+        this.state.figures.volume_value_tooltip.context.clearRect(
+            0, 0,
+            this.state.figures.volume_value_tooltip.get_width(),
+            this.state.figures.volume_value_tooltip.get_height()
+        )
+        this.state.figures.dates_tooltip.context.clearRect(
+            0, 0,
+            this.state.figures.dates_tooltip.get_width(),
+            this.state.figures.dates_tooltip.get_height()
+        )
         this.setState({tooltips: null})
     }
+
     // Date range drag change
     mouseDownHandlerMain(event) {
         this.drag.main = {
@@ -411,10 +670,12 @@ export default class PlotFinancial extends React.Component {
             }
         }
     }
+
     // Mouse hold off
     mouseUpHandlerMain() {
         this.drag.main.state = false
     }
+
     //// Dates canvas
     async mouseMoveHandlerDates(event) {
         if (this.drag.dates.state) { // If mouse is held moves data range
@@ -426,18 +687,19 @@ export default class PlotFinancial extends React.Component {
                 Object.assign(data_range, this.state.data_range)
                 if (x_offset < 0) { // Moving data range start to the left
                     data_range.start = data_range.start + x_offset <= 0 ?
-                        0 : (data_range.end - (data_range.start + x_offset)) * Object.keys(this.props.data).length > 10 ** 6 ?
+                        0 : (data_range.end - (data_range.start + x_offset)) * Object.keys(this.props.data).length > this.max_data ?
                             data_range.start : data_range.start + x_offset
                 } else if (x_offset > 0) { // Moving data range start to the end
                     data_range.start = (data_range.end - (data_range.start + x_offset)) * Object.keys(this.props.data).length < 5 ?
                         data_range.start : data_range.start + x_offset
                 } // Check if changes are visible (not visible on bounds)
                 if (data_range.start !== this.state.data_range.start) {
-                    this.setState({data_range: data_range}, this.plot)
+                    this.recalculate_metadata(data_range)
                 }
             }
         }
     }
+
     mouseDownHandlerDates(event) {
         this.drag.dates = {
             state: true,
@@ -447,59 +709,30 @@ export default class PlotFinancial extends React.Component {
             }
         }
     }
+
     mouseUpHandlerDates() {
         this.drag.dates.state = false
-    }
-    // After-render plot building
-    componentDidMount() {
-        if (Object.keys(this.props.data).length > 5) {
-            let current = this
-            $.ajax({
-                url: '/quotes/api/plot/indicators/list',
-                type: 'GET',
-                data: {},
-                success: function (response) {
-                    current.state.indicators.available = response
-                    // Setting contexts
-                    current.state.figures.main.context = current.state.figures.main.canvas.current.getContext('2d')
-                    current.state.figures.volume.context = current.state.figures.volume.canvas.current.getContext('2d')
-                    current.state.figures.hit.context = current.state.figures.hit.canvas.current.getContext('2d')
-                    current.state.figures.dates.context = current.state.figures.dates.canvas.current.getContext('2d')
-                    // Setting windows and canvases sizes
-                    current.state.figures.main.set_window()
-                    current.state.figures.volume.set_window()
-                    current.state.figures.hit.set_window()
-                    current.state.figures.dates.set_window()
-                    // Setting basic observed data range
-                    const data_amount = Object.keys(current.props.data).length
-                    const default_data_amount = 10 ** 3
-                    current.state.data_range = {
-                        start: 1 - (data_amount <= default_data_amount ? data_amount : default_data_amount) / data_amount,
-                        end: 1
-                    }
-                    // Applying changes and calling drawing method
-                    current.setState(current.state, current.plot)
-                },
-                error: function (response) {}
-            })
-        }
     }
     // Indicator data query
     get_indicator(event) {
         let current = this
-        console.log(event, this.state.indicators.selected)
         $.ajax({
             url: `/quotes/api/plot/indicators/detail/${
                 this.state.indicators.selected.alias
             }`,
             type: 'GET',
             data: {
-                symbol: current.symbol,
-                range_start: Object.keys(current.props.data)[0],
-                range_end: Object.keys(current.props.data)[Object.keys(current.props.data).length - 1],
+                symbol: this.props.symbol,
+                range_start: this.props.data[0].date,
+                range_end: this.props.data[this.props.data.length - 1],
                 args: JSON.stringify(Object.fromEntries((new FormData(event.target.parentElement)).entries())),
             },
             success: function (response) {
+                // Applying front-end parameters
+                response.style = {
+                    color: 'rgba(0, 0, 0, 1)'
+                }
+                response.active = true
                 let indicators = current.state.indicators
                 if (indicators.active.find(
                     indicator => indicator.displayed_name === indicators.selected.displayed_name
@@ -511,7 +744,9 @@ export default class PlotFinancial extends React.Component {
                     indicators.active.push(response)
                 }
                 indicators.selected = response
-                current.setState({indicators: indicators}, current.plot)
+                current.setState({indicators: indicators}, () => {
+                    current.recalculate_metadata(current.state.data_range)
+                })
             },
             error: function (response) {}
         })
@@ -519,19 +754,50 @@ export default class PlotFinancial extends React.Component {
     // ColorMixer component callback
     setIndicatorColor(color) {
         let indicators = this.state.indicators
-        indicators.selected.style.color = color
         indicators.active[indicators.active.indexOf(indicators.active.find(
             indicator => indicator.displayed_name === indicators.selected.displayed_name
         ))].style.color = color
-        this.setState({indicators: indicators}, this.plot)
+        indicators.selected.color = color
+        this.setState({indicators: indicators}, () => {
+            this.recalculate_metadata(this.state.data_range)
+        })
     }
+    // After-render plot building
+    componentDidMount() {
+        if (this.props.data.length > 5) {
+            let current = this
+            $.ajax({
+                url: '/quotes/api/plot/indicators/list',
+                type: 'GET',
+                data: {},
+                success: function (response) {
+                    current.state.indicators.available = response
+                    // Setting contexts
+                    Object.values(current.state.figures).forEach(figure => figure.set_window())
+                    // Setting basic observed data range
+                    current.state.data_range = {
+                        start: 1 - (
+                            current.props.data.length <= current.max_data ?
+                                current.props.data.length :
+                                current.max_data) / current.props.data.length,
+                        end: 1
+                    }
+                    // Applying changes and calling drawing method
+                    current.setState(current.state, () => {
+                        current.recalculate_metadata(current.state.data_range)
+                    })
+                },
+                error: function (response) {}
+            })
+        }
+    }
+
     render() {
-        if (Object.keys(this.props.data).length > 5) {
+        if (this.props.data.length > 5) {
             const indicator_window = <div
                 className={'plot_financial_indicator_window'}
                 ref={this.indicatorWindow}
-                style={{display: 'none'}}
-            >
+                style={{display: 'none'}}>
                 <div>
                     <span onClick={() => {
                         const list = $(this.indicatorWindow.current).find('ul.indicators_available_list')
@@ -560,6 +826,9 @@ export default class PlotFinancial extends React.Component {
                             let indicators = this.state.indicators
                             indicators.selected = null
                             this.setState({indicators: indicators}, () => {
+                                indicators.active[indicators.active.indexOf(indicators.active.find(
+                                    ind => ind.alias = indicator.alias
+                                ))].selected = true
                                 indicators.selected = indicator
                                 this.setState({indicators: indicators})
                             })
@@ -570,17 +839,21 @@ export default class PlotFinancial extends React.Component {
                                 indicators.active[indicators.active.indexOf(indicators.active.find(
                                     i => i.displayed_name === indicator.displayed_name
                                 ))].active = !indicator.active
-                                this.setState({indicators: indicators}, this.plot)
+                                this.setState({indicators: indicators}, () => {
+                                    this.recalculate_metadata(this.state.data_range)
+                                })
                             }}>{indicator.active ? 'Hide' : 'Show'}</li>
                             <li onClick={() => {
                                 let indicators = this.state.indicators
                                 indicators.active.splice(indicators.active.indexOf(indicators.active.find(
                                     i => i.displayed_name === indicator.displayed_name
                                 )), 1)
-                                if (indicators.selected.displayed_name === indicator.displayed_name) {
+                                if (indicator.selected) {
                                     indicators.selected = null
                                 }
-                                this.setState({indicators: indicators}, this.plot)
+                                this.setState({indicators: indicators}, () => {
+                                    this.recalculate_metadata(this.state.data_range)
+                                })
                             }}>Remove</li>
                         </ul></li>
                     )}</ul>
@@ -617,12 +890,11 @@ export default class PlotFinancial extends React.Component {
             </div>
             const tooltips = this.state.tooltips ?
                 <div className={'plot_financial_tooltips'}>
-                    <span>Date: {this.state.tooltips.date}</span>
                     <span>Open: {this.state.tooltips.open}</span>
                     <span>High: {this.state.tooltips.high}</span>
                     <span>Low: {this.state.tooltips.low}</span>
                     <span>Close: {this.state.tooltips.close}</span>
-                    <span>Volume: {this.state.tooltips.volume}</span>
+                    <span>Volume: {this.state.tooltips.volume}M</span>
                     {this.state.tooltips.indicators.map(
                         indicator =>
                             <span key={indicator.displayed_name}>
@@ -667,11 +939,36 @@ export default class PlotFinancial extends React.Component {
                         </canvas>
                         <canvas
                             ref={this.state.figures.dates.canvas}
-                            className={'canvas_dates'}
+                            className={'canvas_dates'}>
+                            Canvas tag is not supported by your browser.
+                        </canvas>
+                        <canvas
+                            ref={this.state.figures.dates_tooltip.canvas}
+                            className={'canvas_dates_tooltip'}
                             onMouseMove={this.mouseMoveHandlerDates}
                             onMouseDown={this.mouseDownHandlerDates}
                             onMouseUp={this.mouseUpHandlerDates}>
                             Canvas tag is not supported by your browser.
+                        </canvas>
+                        <canvas
+                            ref={this.state.figures.value.canvas}
+                            className={'canvas_value'}
+                        >Canvas tag is not supported by your browser.
+                        </canvas>
+                        <canvas
+                            ref={this.state.figures.value_tooltip.canvas}
+                            className={'canvas_value_tooltip'}
+                        >Canvas tag is not supported by your browser.
+                        </canvas>
+                        <canvas
+                            ref={this.state.figures.volume_value.canvas}
+                            className={'canvas_volume_value'}
+                        >Canvas tag is not supported by your browser.
+                        </canvas>
+                        <canvas
+                            ref={this.state.figures.volume_value_tooltip.canvas}
+                            className={'canvas_volume_value_tooltip'}
+                        >Canvas tag is not supported by your browser.
                         </canvas>
                     </div>
                 </>

@@ -62,6 +62,7 @@ class Figure {
         return this.window_size.height * this.canvas_density
     }
     set_window() {
+        this.context = this.canvas.current.getContext('2d')
         this.canvas.current.style.width = `${this.window_size.width}px`
         this.canvas.current.style.height = `${this.window_size.height}px`
         this.canvas.current.width = this.get_width()
@@ -112,6 +113,7 @@ export default class PlotDateValue extends React.Component {
                 }
             }
         }
+        this.max_data = 1000  // Max data points on chart simultaneously
         // UI events binding
         //// Main canvas
         this.mouseMoveHandlerMain = this.mouseMoveHandlerMain.bind(this)
@@ -127,15 +129,12 @@ export default class PlotDateValue extends React.Component {
     async plot(callback) {
         let state = this.state
         // Clear
-        state.figures.main.context.clearRect(
-            0, 0,
-            state.figures.main.get_width(),
-            state.figures.main.get_height()
-        )
-        state.figures.dates.context.clearRect(
-            0, 0,
-            state.figures.dates.get_width(),
-            state.figures.dates.get_height()
+        Object.values(state.figures).forEach(
+            figure => figure.context.clearRect(
+                0, 0,
+                figure.get_width(),
+                figure.get_height()
+            )
         )
         // Drawing grid on plot canvases
         this.show_grid(state.figures.main)
@@ -461,7 +460,7 @@ export default class PlotDateValue extends React.Component {
                 )
                 if (x_offset < 0) { // Moving data range start to the left
                     data_range.start = data_range.start + x_offset <= 0 ?
-                        0 : (data_range.end - (data_range.start + x_offset)) * max_data_length > 10 ** 6 ?
+                        0 : (data_range.end - (data_range.start + x_offset)) * max_data_length > this.max_data ?
                             data_range.start : data_range.start + x_offset
                 } else if (x_offset > 0) { // Moving data range start to the right
                     data_range.start = (data_range.end - (data_range.start + x_offset)) * max_data_length < 5 ?
@@ -490,7 +489,6 @@ export default class PlotDateValue extends React.Component {
         if (this.is_enough_data) {
             let state = this.state
             Object.keys(state.figures).map(key => {  // Setting up figures
-                state.figures[key].context = state.figures[key].canvas.current.getContext('2d')
                 state.figures[key].set_window()
             })
             // Setting basic observed data range
@@ -498,9 +496,8 @@ export default class PlotDateValue extends React.Component {
                 null,
                 this.props.data.map(log => Object.keys(log.data).length)
             )
-            const default_data_amount = 10 ** 3
             state.data_range = {
-                start: 1 - (data_amount <= default_data_amount ? data_amount : default_data_amount) / data_amount,
+                start: 1 - (data_amount <= this.max_data ? data_amount : this.max_data) / data_amount,
                 end: 1
             }
             // Applying changes and calling drawing method

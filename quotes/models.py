@@ -50,6 +50,32 @@ class StockQuotes(models.Model):  # Economic market instrument information stora
         blank=False,
         null=False
     )
+    type = models.CharField(
+        max_length=7,
+        blank=False,
+        null=False,
+        choices=[
+            ('stock', 'Stock'),
+            ('etf', 'ETF'),
+            ('bond', 'Bond'),
+            ('option', 'Option'),
+            ('futures', 'Futures'),
+            ('forex', 'FOREX')
+        ],
+        default='stock'
+    )
+    country = models.CharField(
+        max_length=20,
+        blank=False,
+        null=False,
+        default='USA'
+    )
+    exchange = models.CharField(
+        max_length=100,
+        blank=False,
+        null=False,
+        default='NASDAQ'
+    )
 
     # API key for alpha_vantage api
     api_key = 'J7JRRVLFS9HZFPBY'
@@ -104,7 +130,7 @@ class StockQuotes(models.Model):  # Economic market instrument information stora
     def get_quotes(self) -> dict:
         quotes = self.quotes  # Quotes serialization to JSON
         quotes.index = quotes.index.strftime('%Y-%m-%d')
-        return quotes.transpose().to_dict()
+        return quotes.rename_axis('date').reset_index().to_dict('records')
 
     def get_moving_averages(  # Moving Averages values for stock specified
             self,
@@ -128,11 +154,7 @@ class StockQuotes(models.Model):  # Economic market instrument information stora
                     'vwma': ind.wma(self.quotes['volume'].to_numpy()),
                 }[_type](self.quotes, price, period_length),
                 index=self.quotes.index
-            )[slice(range_start, range_end)].tolist(),
-            'style': {
-                'color': 'rgba(0, 0, 0, 1)'  # CSS format color
-            },
-            'active': True,
+            )[slice(range_start, range_end)].tolist()
         }
 
     def __str__(self):
