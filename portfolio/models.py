@@ -168,7 +168,7 @@ class Portfolio(models.Model):
             case 'dict':
                 def dict_format(df):
                     df.index = df.index.strftime('%Y-%m-%d')
-                    return df.transpose().to_dict()
+                    return df.rename_axis('date').reset_index().to_dict('records')
                 return dict(zip(
                     all_quotes.keys(),
                     map(dict_format, all_quotes.values())

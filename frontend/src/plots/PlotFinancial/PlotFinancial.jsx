@@ -69,32 +69,32 @@ class Figure {
     }
     // Show translucent grid
     show_grid() {
+        this.context.save()  // Saving context
         // Drawing horizontal
-        this.context.save()
-        this.context.lineWidth = this.grid.horizontal.width * this.canvas_density
-        this.context.strokeStyle = this.grid.horizontal.color
         this.context.beginPath()
         for (let i = 1; i <= this.grid.horizontal.amount; ++i) {
             const y = this.get_height() * i / this.grid.horizontal.amount
             this.context.moveTo(0, y)
             this.context.lineTo(this.get_width(), y)
         }
+        this.context.lineWidth = this.grid.horizontal.width * this.canvas_density
+        this.context.strokeStyle = this.grid.horizontal.color
         this.context.stroke()
         this.context.closePath()
         this.context.restore()
         // Drawing vertical
         this.context.save()
-        this.context.lineWidth = this.grid.vertical.width * this.canvas_density
-        this.context.strokeStyle = this.grid.vertical.color
         this.context.beginPath()
         for (let i = 1; i <= this.grid.vertical.amount; ++i) {
             const x = this.get_width() * i / this.grid.vertical.amount
             this.context.moveTo(x, 0)
             this.context.lineTo(x, this.get_height())
         }
+        this.context.lineWidth = this.grid.vertical.width * this.canvas_density
+        this.context.strokeStyle = this.grid.vertical.color
         this.context.stroke()
         this.context.closePath()
-        this.context.restore()
+        this.context.restore()  // Restoring context
     }
 }
 
@@ -138,14 +138,19 @@ export default class PlotFinancial extends React.Component {
             },
             meta_data: {  // Precalculated data based on observed range
                 data: null,
-                indicators: null,
+                indicators: {
+                    data: null,
+                    styles: null
+                },
                 value: {
                     min: null,
-                    max: null
+                    max: null,
+                    spread: null
                 },
                 volume: {
                     min: null,
-                    max: null
+                    max: null,
+                    spread: null
                 }
             }
         }
@@ -185,7 +190,8 @@ export default class PlotFinancial extends React.Component {
         this.mouseDownHandlerDates = this.mouseDownHandlerDates.bind(this)
         this.mouseUpHandlerDates = this.mouseUpHandlerDates.bind(this)
     }
-    recalculate_metadata(data_range) {
+
+    recalculate_metadata(data_range) {  // Precalculating frequently used data
         const [start, end] = [
             Math.floor(this.props.data.length * data_range.start),
             Math.ceil(this.props.data.length * data_range.end)
@@ -387,8 +393,6 @@ export default class PlotFinancial extends React.Component {
             this.state.figures.main.context.closePath()
         }
         // Drawing dates
-        this.state.figures.dates.context.beginPath()
-        this.state.figures.dates.context.strokeStyle = '#000000'
         let step = Math.ceil(data_amount * 0.1)
         this.state.figures.dates.context.font = this.font
         for (let i = step; i <= data_amount - step * 0.5; i += step) {
@@ -414,32 +418,27 @@ export default class PlotFinancial extends React.Component {
         this.state.figures.value.context.font = this.font
         for (let i = this.state.meta_data.value.min; i < this.state.meta_data.value.max + step; i += step) {
             this.state.figures.value.context.beginPath()
+            const y = this.state.figures.value.get_height() * (
+                1 - (i - this.state.meta_data.value.min) / step /
+                this.state.figures.main.grid.horizontal.amount *
+                this.state.figures.value.scale.height - this.state.figures.main.padding.bottom
+            ) - 1
             this.state.figures.value.context.moveTo(
-                this.state.figures.value.get_width() * (1 - this.state.figures.value.padding.right),
-                this.state.figures.value.get_height() * (
-                    1 - (i - this.state.meta_data.value.min) / step /
-                    this.state.figures.main.grid.horizontal.amount *
-                    this.state.figures.value.scale.height - this.state.figures.main.padding.bottom
-                ) - 1
+                this.state.figures.value.get_width() * (
+                    1 - this.state.figures.value.padding.right
+                ), y
             )
             this.state.figures.value.context.lineTo(
-                this.state.figures.value.get_width() * (0.9 - this.state.figures.value.padding.right),
-                this.state.figures.value.get_height() * (
-                    1 - (i - this.state.meta_data.value.min) / step /
-                    this.state.figures.main.grid.horizontal.amount *
-                    this.state.figures.value.scale.height - this.state.figures.main.padding.bottom
-                ) - 1
+                this.state.figures.value.get_width() * (
+                    0.9 - this.state.figures.value.padding.right
+                ), y
             )
             this.state.figures.value.context.stroke()
             this.state.figures.value.context.closePath()
             this.state.figures.value.context.fillText(
                 Math.round((i + Number.EPSILON) * 100) / 100,
                 this.state.figures.value.get_width() * 0.05,
-                this.state.figures.value.get_height() * (
-                    1 - (i - this.state.meta_data.value.min) / step /
-                    this.state.figures.main.grid.horizontal.amount *
-                    this.state.figures.value.scale.height - this.state.figures.main.padding.bottom
-                ) + 3
+                y + 4
             )
         }
         // Drawing volume scale
@@ -479,12 +478,12 @@ export default class PlotFinancial extends React.Component {
     //// Main canvas
     // Draws coordinate pointer and tooltips if mouse pointer is over canvas
     mouseMoveHandlerMain(event) {
-        const [x, y] = [ // Getting current in-object coordinates
+        const [x, y] = [  // Getting current in-object coordinates
             event.clientX - event.target.getBoundingClientRect().left,
             event.clientY - event.target.getBoundingClientRect().top
         ]
         if (x >= 0 && y >= 0) {
-            if (this.drag.main.state) { // If mouse is held moves data range
+            if (this.drag.main.state) {  // If mouse is held moves data range
                 const x_offset = (x - this.drag.main.position.x) /
                     (this.state.figures.hit.get_width() * 200)
                 if (x_offset) {
@@ -534,12 +533,16 @@ export default class PlotFinancial extends React.Component {
             this.state.figures.value_tooltip.context.font = this.font
             this.state.figures.value_tooltip.context.fillStyle = '#ffffff'
             this.state.figures.value_tooltip.context.fillText(
-                Math.round((
-                    this.state.meta_data.value.spread /
-                    this.state.figures.main.get_padded_height() * (
-                        this.state.figures.main.get_height() - y -
-                        this.state.figures.main.get_padded_height() / 8
-                    ) + this.state.meta_data.value.min + Number.EPSILON) * 100) / 100,
+                Math.round(
+                    (  // dv/dh * (y - hmin) + vmin
+                        this.state.meta_data.value.spread /
+                        this.state.figures.main.get_padded_height() * (
+                            this.state.figures.main.get_height() - y -
+                            this.state.figures.main.get_height() *
+                            this.state.figures.main.padding.bottom
+                        ) + this.state.meta_data.value.min + Number.EPSILON
+                    ) * 100
+                ) / 100,
                 this.state.figures.value_tooltip.get_width() * 0.05,
                 y + 3
             )
@@ -576,7 +579,9 @@ export default class PlotFinancial extends React.Component {
             )
             this.state.figures.volume_value_tooltip.context.restore()
             // Segment hit check
-            const segment_width = this.state.figures.hit.get_width() / this.state.meta_data.data.length
+            const segment_width =
+                this.state.figures.hit.get_width() /
+                this.state.meta_data.data.length
             const i = Math.floor(x / segment_width)
             // Drawing vertical line
             this.state.figures.hit.context.moveTo(
@@ -609,8 +614,10 @@ export default class PlotFinancial extends React.Component {
             this.state.figures.dates_tooltip.context.fillStyle = '#ffffff'
             this.state.figures.dates_tooltip.context.fillText(
                 date,
-                (2 * i + 1.1) * this.state.figures.main.scale.width / 2 - 25,
-                this.state.figures.dates_tooltip.get_height() * (this.state.figures.dates_tooltip.padding.top + 0.3)
+                (2 * i + 1.1) * segment_width / 2 - 25,
+                this.state.figures.dates_tooltip.get_height() * (
+                    this.state.figures.dates_tooltip.padding.top + 0.3
+                )
             )
             this.state.figures.dates_tooltip.context.restore()
             // Data tooltips
@@ -793,7 +800,7 @@ export default class PlotFinancial extends React.Component {
     }
 
     render() {
-        if (this.props.data.length > 5) {
+        if (this.props.data.length >= 5) {
             const indicator_window = <div
                 className={'plot_financial_indicator_window'}
                 ref={this.indicatorWindow}

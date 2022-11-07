@@ -11,10 +11,10 @@ class Figure {
         padding_top=0,
         padding_right=0,
         padding_bottom=0,
-        grid_vertical_amount=10,
+        grid_vertical_amount=0,
         grid_vertical_color='#000000',
         grid_vertical_width=1,
-        grid_horizontal_amount=10,
+        grid_horizontal_amount=0,
         grid_horizontal_color='#000000',
         grid_horizontal_width=1,
         canvas_density=1
@@ -57,9 +57,15 @@ class Figure {
     get_width() {
         return this.window_size.width * this.canvas_density
     }
+    get_padded_width() {
+        return this.get_width() * (1 - this.padding.left - this.padding.right)
+    }
     // Canvas actual height
     get_height() {
         return this.window_size.height * this.canvas_density
+    }
+    get_padded_height() {
+        return this.get_height() * (1 - this.padding.top - this.padding.bottom)
     }
     set_window() {
         this.context = this.canvas.current.getContext('2d')
@@ -67,6 +73,33 @@ class Figure {
         this.canvas.current.style.height = `${this.window_size.height}px`
         this.canvas.current.width = this.get_width()
         this.canvas.current.height = this.get_height()
+    }
+    // Show translucent grid
+    show_grid() {
+        this.context.save()  // Saving context
+        // Drawing horizontal
+        this.context.beginPath()
+        for (let i = 1; i <= this.grid.horizontal.amount; ++i) {
+            const y = this.get_height() * i / this.grid.horizontal.amount
+            this.context.moveTo(0, y)
+            this.context.lineTo(this.get_width(), y)
+        }
+        this.context.lineWidth = this.grid.horizontal.width * this.canvas_density
+        this.context.strokeStyle = this.grid.horizontal.color
+        this.context.stroke()
+        this.context.closePath()
+        // Drawing vertical
+        this.context.beginPath()
+        for (let i = 1; i <= this.grid.vertical.amount; ++i) {
+            const x = this.get_width() * i / this.grid.vertical.amount
+            this.context.moveTo(x, 0)
+            this.context.lineTo(x, this.get_height())
+        }
+        this.context.lineWidth = this.grid.vertical.width * this.canvas_density
+        this.context.strokeStyle = this.grid.vertical.color
+        this.context.stroke()
+        this.context.closePath()
+        this.context.restore()  // Restoring context
     }
 }
 
@@ -87,15 +120,22 @@ export default class PlotDateValue extends React.Component {
 
                 ),
                 hit: new Figure(850, 480),
-                dates: new Figure(850, 48, 0, 0.1),
-                value: new Figure(48, 480)
+                dates: new Figure(850, 48),
+                dates_tooltip: new Figure(850, 48),
+                value: new Figure(48, 480),
+                value_tooltip: new Figure(48, 480)
             },
-            tooltips: null,
             data_range: null,
-        }  // Data amount indicator
-        this.is_enough_data = props.data.every(
-            log => Object.keys(log.data).length > 4
-        )
+            tooltips: null,
+            meta_data: {
+                data: null,
+                value: {
+                    min: null,
+                    max: null,
+                    spread: null
+                }
+            }
+        }
         // Data range navigation
         this.drag = {
             main: {
@@ -114,6 +154,19 @@ export default class PlotDateValue extends React.Component {
             }
         }
         this.max_data = 1000  // Max data points on chart simultaneously
+        this.font = '10px Arial'
+        this.colors = [  // Lines colors
+            '#d14d00',
+            '#000fca',
+            '#5ec200',
+            '#bb0000',
+            '#8900ad',
+            '#bb8b00',
+            '#00a076',
+        ]
+        // Methods binding
+        this.recalculate_metadata = this.recalculate_metadata.bind(this)
+        this.plot = this.plot.bind(this)
         // UI events binding
         //// Main canvas
         this.mouseMoveHandlerMain = this.mouseMoveHandlerMain.bind(this)
@@ -125,284 +178,293 @@ export default class PlotDateValue extends React.Component {
         this.mouseDownHandlerDates = this.mouseDownHandlerDates.bind(this)
         this.mouseUpHandlerDates = this.mouseUpHandlerDates.bind(this)
     }
-    // Date-value type plot (<date:String>, <value:Number>)
-    async plot(callback) {
-        let state = this.state
-        // Clear
-        Object.values(state.figures).forEach(
-            figure => figure.context.clearRect(
-                0, 0,
-                figure.get_width(),
-                figure.get_height()
-            )
-        )
-        // Drawing grid on plot canvases
-        this.show_grid(state.figures.main)
-        // Curves colors
-        const colors = [
-            '#d14d00',
-            '#000fca',
-            '#5ec200',
-            '#bb0000',
-            '#8900ad',
-            '#bb8b00',
-            '#00a076',
+
+    recalculate_metadata(data_range) {  // Precalculating frequently used data
+        const data_amount = this.props.data[0].data.length
+        const [start, end] = [
+            Math.floor(data_amount * data_range.start),
+            Math.ceil(data_amount * data_range.end)
         ]
-        // Rescaling
-        const [max_value, min_value, max_data_amount] = [
+        const data = this.props.data.map(log => log.data.slice(start, end))
+        const [max_value, min_value] = [
             Math.max.apply(
-                null, this.props.data.map(
+                null, data.map(
                     log => Math.max.apply(null, Array.from(
-                        log.data.slice(
-                            Math.floor(log.data.length * state.data_range.start),
-                            Math.ceil(log.data.length * state.data_range.end)
-                        ), obj => obj.value
+                        log, obj => obj.value
                     ))
                 )
             ),
             Math.min.apply(
-                null, this.props.data.map(
+                null, data.map(
                     log => Math.min.apply(null, Array.from(
-                        log.data.slice(
-                            Math.floor(log.data.length * state.data_range.start),
-                            Math.ceil(log.data.length * state.data_range.end)
-                        ), obj => obj.value
+                        log, obj => obj.value
                     ))
-                )
-            ),
-            Math.max.apply(
-                null, this.props.data.map(
-                    log => log.data.slice(
-                        Math.floor(log.data.length * state.data_range.start),
-                        Math.ceil(log.data.length * state.data_range.end)
-                    ).length
                 )
             )
         ]
-        const spread = Math.abs(max_value - min_value)
-        state.figures.main.scale.height = state.figures.main.get_height() *
-            (1 - state.figures.main.padding.bottom - state.figures.main.padding.top) /
-            spread
-        state.figures.main.scale.width = state.figures.main.get_width() *
-            (1 - state.figures.main.padding.left - state.figures.main.padding.right) /
-            (max_data_amount - 1)
+        let state = this.state
+        state.data_range = data_range
+        // Rescaling
+        state.figures.main.scale.height =
+            state.figures.main.get_padded_height() / (max_value - min_value)
+        state.figures.main.scale.width =
+            state.figures.main.get_padded_width() / data[0].length
         // Moving coordinates system
-        state.figures.main.axes.y = max_value * state.figures.main.scale.height +
+        state.figures.main.axes.y =
+            max_value * state.figures.main.scale.height +
             state.figures.main.padding.top * state.figures.main.get_height()
-        state.figures.main.axes.x = state.figures.main.padding.left * state.figures.main.get_width()
+        state.figures.main.axes.x =
+            state.figures.main.padding.left * state.figures.main.get_width()
+        state.meta_data = {
+            data: data,
+            value: {
+                min: min_value,
+                max: max_value,
+                spread: max_value - min_value
+            }
+        }
+        this.setState(state, this.plot)
+    }
+
+    // Date-value type plot (<date:String>, <value:Number>)
+    async plot() {
+        Object.values(this.state.figures).forEach(
+            figure => {  // Clearing window
+                figure.context.clearRect(
+                    0, 0,
+                    figure.get_width(),
+                    figure.get_height()
+                )  // Drawing grid
+                figure.show_grid()
+            }
+        )
         // Drawing curves
+        const data_amount = this.state.meta_data.data[0].length
         this.props.data.map((log, ind) => {
             // Getting observed data range
-            const data = log.data.slice(
-                Math.floor(log.data.length * state.data_range.start),
-                Math.ceil(log.data.length * state.data_range.end)
+            const values = Array.from(
+                this.state.meta_data.data[ind],
+                obj => obj.value
             )
-            const data_amount = data.length
-            const values = Array.from(data, obj => obj.value)
             // Changing context
-            state.figures.main.context.save()
-            state.figures.main.context.translate(state.figures.main.axes.x, state.figures.main.axes.y)
-            state.figures.main.context.scale(1, -state.figures.main.scale.height)
+            this.state.figures.main.context.save()
+            this.state.figures.main.context.translate(
+                this.state.figures.main.axes.x,
+                this.state.figures.main.axes.y
+            )
+            this.state.figures.main.context.scale(
+                1,
+                -this.state.figures.main.scale.height
+            )
             // Drawing plot
-            state.figures.main.context.beginPath()
-            state.figures.main.context.moveTo(0, values[0])
+            this.state.figures.main.context.beginPath()
+            this.state.figures.main.context.moveTo(0, values[0])
             for (let i = 1; i < data_amount; ++i) {
-                state.figures.main.context.lineTo(i * state.figures.main.scale.width, values[i])
+                this.state.figures.main.context.lineTo(
+                    i * this.state.figures.main.scale.width,
+                    values[i]
+                )
             }
-            state.figures.main.context.restore()
-            state.figures.main.context.lineWidth = 2
-            state.figures.main.context.strokeStyle = colors[ind]
-            state.figures.main.context.stroke()
-            state.figures.main.context.closePath()
+            this.state.figures.main.context.restore()
+            this.state.figures.main.context.lineWidth = 2
+            this.state.figures.main.context.strokeStyle = this.colors[ind]
+            this.state.figures.main.context.stroke()
+            this.state.figures.main.context.closePath()
             // Drawing legend
-            state.figures.main.context.font = '12px Arial'
-            state.figures.main.context.fillStyle = colors[ind]
-            state.figures.main.context.fillText(
-                log.strategy,
-                15,
-                state.figures.main.get_height() / this.props.data.length / 10 * (ind + 1)
+            this.state.figures.main.context.font = '12px Arial'
+            this.state.figures.main.context.fillStyle = this.colors[ind]
+            this.state.figures.main.context.fillText(
+                log.strategy, 15,
+                this.state.figures.main.get_height() /
+                this.props.data.length / 10 * (ind + 1)
             )
-        })  // Restoring context
-        // Drawing dates axis
-        state.figures.dates.context.beginPath()
-        state.figures.dates.context.strokeStyle = '#000000'
-        state.figures.dates.context.moveTo(
-            0,
-            state.figures.dates.get_height() * state.figures.dates.padding.top
-        )
-        state.figures.dates.context.lineTo(
-            state.figures.dates.get_width(),
-            state.figures.dates.get_height() * state.figures.dates.padding.top
-        )
-        state.figures.dates.context.stroke()
-        state.figures.dates.context.closePath()
-        // Drawing data notches and dates
-        const max_dates = this.props.data.filter(
-            log => log.data.slice(
-                Math.floor(log.data.length * state.data_range.start),
-                Math.ceil(log.data.length * state.data_range.end)
-            ).length === max_data_amount
-        )[0].data
-        let step = Math.ceil(max_data_amount * 0.1)
-        for (let i = step; i < max_data_amount - step; i += step) {
-            state.figures.dates.context.beginPath()
-            state.figures.dates.context.moveTo(
-                i * state.figures.main.scale.width,
-                state.figures.dates.get_height() * state.figures.dates.padding.top
+        })
+        // Drawing dates
+        let step = Math.ceil(data_amount * 0.1)
+        this.state.figures.dates.context.font = this.font
+        for (let i = step; i <= data_amount - step * 0.5; i += step) {
+            this.state.figures.dates.context.beginPath()
+            this.state.figures.dates.context.moveTo(
+                i * this.state.figures.main.scale.width - 1,
+                this.state.figures.dates.get_height() * this.state.figures.dates.padding.top
             )
-            state.figures.dates.context.lineTo(
-                i * state.figures.main.scale.width,
-                state.figures.dates.get_height() * (state.figures.dates.padding.top + 0.1)
+            this.state.figures.dates.context.lineTo(
+                i * this.state.figures.main.scale.width - 1,
+                this.state.figures.dates.get_height() * (this.state.figures.dates.padding.top + 0.1)
             )
-            state.figures.dates.context.stroke()
-            state.figures.dates.context.closePath()
-            state.figures.dates.context.font = '10px Arial'
-            state.figures.dates.context.fillText(
-                max_dates[i].date,
-                i * state.figures.main.scale.width - 25,
-                state.figures.dates.get_height() * (state.figures.dates.padding.top + 0.3)
+            this.state.figures.dates.context.stroke()
+            this.state.figures.dates.context.closePath()
+            this.state.figures.dates.context.fillText(
+                this.state.meta_data.data[0][i].date,
+                i * this.state.figures.main.scale.width - 25,
+                this.state.figures.dates.get_height() * (this.state.figures.dates.padding.top + 0.3)
             )
         }
         // Drawing value scale
-        step = spread / (state.figures.main.grid.vertical.amount - 2)
-        for (let i = min_value; i <= max_value + step; i += step) {
-            state.figures.value.context.beginPath()
-            state.figures.value.context.moveTo(
-                state.figures.value.get_width() * (1 - state.figures.value.padding.right),
-                state.figures.value.get_height() * (
-                    1 - (i - min_value) / step / state.figures.main.grid.vertical.amount *
-                    state.figures.value.scale.height - state.figures.main.padding.bottom
-                )
+        step = this.state.meta_data.value.spread / (this.state.figures.main.grid.horizontal.amount - 2)
+        this.state.figures.value.context.font = this.font
+        for (let i = this.state.meta_data.value.min; i < this.state.meta_data.value.max + step; i += step) {
+            this.state.figures.value.context.beginPath()
+            const y = this.state.figures.value.get_height() * (
+                1 - (i - this.state.meta_data.value.min) / step /
+                this.state.figures.main.grid.vertical.amount *
+                this.state.figures.value.scale.height - this.state.figures.main.padding.bottom
+            ) - 1
+            this.state.figures.value.context.moveTo(
+                this.state.figures.value.get_width() * (
+                    1 - this.state.figures.value.padding.right
+                ), y
             )
-            state.figures.value.context.lineTo(
-                state.figures.value.get_width() * (0.9 - state.figures.value.padding.right),
-                state.figures.value.get_height() * (
-                    1 - (i - min_value) / step / state.figures.main.grid.vertical.amount *
-                    state.figures.value.scale.height - state.figures.main.padding.bottom
-                )
+            this.state.figures.value.context.lineTo(
+                this.state.figures.value.get_width() * (
+                    0.9 - this.state.figures.value.padding.right
+                ), y
             )
-            state.figures.value.context.stroke()
-            state.figures.value.context.closePath()
-            state.figures.value.context.font = '10px Arial'
-            state.figures.value.context.fillText(
-                `${Math.round((i / max_dates[0].value * 100 + Number.EPSILON) * 100) / 100}%`,
-                state.figures.value.get_width() * 0.05,
-                state.figures.value.get_height() * (
-                    1 - (i - min_value) / step / state.figures.main.grid.vertical.amount *
-                    state.figures.value.scale.height - state.figures.main.padding.bottom
-                ) + 3
+            this.state.figures.value.context.stroke()
+            this.state.figures.value.context.closePath()
+            this.state.figures.value.context.fillText(
+                `${Math.round((
+                    i / this.state.meta_data.data[0][0].value *
+                    100 + Number.EPSILON
+                ) * 100) / 100}%`,
+                this.state.figures.value.get_width() * 0.05,
+                y + 4
             )
         }
-        this.setState(state, callback)
-    }
-    // Show translucent grid
-    show_grid(figure) {
-        const context = figure.context
-        // Drawing horizontal
-        context.lineWidth = figure.grid.horizontal.width * figure.canvas_density
-        context.strokeStyle = figure.grid.horizontal.color
-        context.beginPath()
-        for (let i = 1; i <= figure.grid.horizontal.amount; ++i) {
-            const y = figure.get_height() * i / figure.grid.horizontal.amount
-            context.moveTo(0, y)
-            context.lineTo(this.state.figures.main.get_width(), y)
-        }
-        context.stroke()
-        context.closePath()
-        // Drawing vertical
-        context.lineWidth = figure.grid.vertical.width * figure.canvas_density
-        context.strokeStyle = figure.grid.vertical.color
-        context.beginPath()
-        for (let i = 1; i <= figure.grid.vertical.amount; ++i) {
-            const x = figure.get_width() * i / figure.grid.vertical.amount
-            context.moveTo(x, 0)
-            context.lineTo(x, figure.get_height())
-        }
-        context.stroke()
-        context.closePath()
     }
     // Mouse events
     //// Main canvas
     // Draws coordinate pointer and tooltips if mouse pointer is over canvas
     mouseMoveHandlerMain(event) {
-        const [x, y] = [
+        const [x, y] = [  // Getting current in-object coordinates
             event.clientX - event.target.getBoundingClientRect().left,
             event.clientY - event.target.getBoundingClientRect().top
         ]
-        if (this.drag.main.state) { // If mouse is held moves data range
-            const x_offset = (x - this.drag.main.position.x) /
-                (this.state.figures.hit.get_width() * 200)
-            if (x_offset) {
-                // Copying current data range to new object
-                let data_range = {}
-                Object.assign(data_range, this.state.data_range)
-                if (x_offset < 0) { // Moving window to the left and data range to the right
-                    data_range.end = data_range.end - x_offset >= 1 ? 1 : data_range.end - x_offset
-                    data_range.start = data_range.end - (this.state.data_range.end - this.state.data_range.start)
-                } else if (x_offset > 0) { // Moving window to the right and data range to the left
-                    data_range.start = data_range.start - x_offset <= 0 ? 0 : data_range.start - x_offset
-                    data_range.end = data_range.start + (this.state.data_range.end - this.state.data_range.start)
-                } // Check if changes are visible (not visible on bounds)
-                if (data_range.start !== this.state.data_range.start && data_range.end !== this.state.data_range.end) {
-                    this.setState({data_range: data_range}, this.plot)
+        if (x >= 0 && y >= 0) {
+            if (this.drag.main.state) { // If mouse is held moves data range
+                const x_offset = (x - this.drag.main.position.x) /
+                    (this.state.figures.hit.get_width() * 200)
+                if (x_offset) {
+                    // Copying current data range to new object
+                    let data_range = {}
+                    Object.assign(data_range, this.state.data_range)
+                    if (x_offset < 0) { // Moving window to the left and data range to the right
+                        data_range.end = data_range.end - x_offset >= 1 ? 1 : data_range.end - x_offset
+                        data_range.start = data_range.end - (this.state.data_range.end - this.state.data_range.start)
+                    } else if (x_offset > 0) { // Moving window to the right and data range to the left
+                        data_range.start = data_range.start - x_offset <= 0 ? 0 : data_range.start - x_offset
+                        data_range.end = data_range.start + (this.state.data_range.end - this.state.data_range.start)
+                    } // Check if changes are visible (not visible on bounds)
+                    if (data_range.start !== this.state.data_range.start && data_range.end !== this.state.data_range.end) {
+                        this.setState({data_range: data_range}, this.plot)
+                    }
                 }
-            }
-        } // Select data with maximum length
-        const max_data_length = Math.max.apply(
-            null, this.props.data.map(
-                log => log.data.length
+            } // Select data with maximum length
+            this.state.figures.hit.context.clearRect(
+                0, 0,
+                this.state.figures.hit.get_width(),
+                this.state.figures.hit.get_height()
             )
-        )
-        const max_data = this.props.data.filter(
-            log => log.data.length === max_data_length
-        )[0].data.slice(
-            Math.floor(max_data_length * this.state.data_range.start),
-            Math.ceil(max_data_length * this.state.data_range.end)
-        )
-        const context = this.state.figures.hit.context
-        context.clearRect(
-            0, 0,
-            this.state.figures.hit.get_width(),
-            this.state.figures.hit.get_height()
-        )
-        context.save()
-        context.beginPath()
-        context.strokeStyle = '#696969'
-        context.setLineDash([5, 5])
-        // Drawing horizontal line
-        context.moveTo(0, y)
-        context.lineTo(this.state.figures.hit.get_width(), y)
-        // Drawing vertical line
-        //// Segment hit check
-        const segment_width = this.state.figures.hit.get_width() / max_data.length
-        const i = Math.floor(x / segment_width)
-        context.moveTo(i * this.state.figures.main.scale.width, 0)
-        context.lineTo(i * this.state.figures.main.scale.width, this.state.figures.hit.get_height())
-        context.stroke()
-        context.closePath()
-        context.restore()
-        // Assigning cursor tooltips
-        const date = max_data[i].date
-        let tooltips = []
-        this.props.data.map(log => {
-            const data = log.data.slice(
-                Math.floor(log.data.length * this.state.data_range.start),
-                Math.ceil(log.data.length * this.state.data_range.end)
+            this.state.figures.hit.context.save()
+            this.state.figures.hit.context.beginPath()
+            this.state.figures.hit.context.strokeStyle = '#696969'
+            this.state.figures.hit.context.setLineDash([5, 5])
+            // Drawing horizontal line
+            this.state.figures.hit.context.moveTo(0, y)
+            this.state.figures.hit.context.lineTo(this.state.figures.hit.get_width(), y)
+            // Drawing value tooltip
+            let grid_step = this.state.figures.main.get_height() /
+                this.state.figures.main.grid.horizontal.amount
+            this.state.figures.value_tooltip.context.clearRect(
+                0, 0,
+                this.state.figures.value_tooltip.get_width(),
+                this.state.figures.value_tooltip.get_height()
             )
-            if (i in data) {
+            this.state.figures.value_tooltip.context.save()
+            this.state.figures.value_tooltip.context.fillStyle = '#323232'
+            this.state.figures.value_tooltip.context.fillRect(
+                0,
+                y - grid_step / 4,
+                this.state.figures.value_tooltip.get_width(),
+                grid_step / 2
+            )
+            this.state.figures.value_tooltip.context.font = this.font
+            this.state.figures.value_tooltip.context.fillStyle = '#ffffff'
+            this.state.figures.value_tooltip.context.fillText(
+                `${Math.round(
+                    (  // dv/dh * (y - hmin) + vmin
+                        (
+                            this.state.meta_data.value.spread /
+                            this.state.figures.main.get_padded_height() * (
+                                this.state.figures.main.get_height() - y -
+                                this.state.figures.main.get_height() *
+                                this.state.figures.main.padding.bottom
+                            ) + this.state.meta_data.value.min
+                        ) / this.state.meta_data.data[0][0].value * 100 + Number.EPSILON
+                    ) * 100
+                ) / 100}%`,
+                this.state.figures.value_tooltip.get_width() * 0.05,
+                y + 3
+            )
+            this.state.figures.value_tooltip.context.restore()
+            // Drawing vertical line
+            //// Segment hit check
+            const segment_width =
+                this.state.figures.hit.get_width() /
+                this.state.meta_data.data[0].length
+            const i = Math.floor(x / segment_width)
+            this.state.figures.hit.context.moveTo(
+                i * this.state.figures.main.scale.width, 0
+            )
+            this.state.figures.hit.context.lineTo(
+                i * this.state.figures.main.scale.width,
+                this.state.figures.hit.get_height()
+            )
+            this.state.figures.hit.context.stroke()
+            this.state.figures.hit.context.closePath()
+            this.state.figures.hit.context.restore()
+            // Drawing date tooltip
+            this.state.figures.dates_tooltip.context.clearRect(
+                0, 0,
+                this.state.figures.dates_tooltip.get_width(),
+                this.state.figures.dates_tooltip.get_height()
+            )
+            this.state.figures.dates_tooltip.context.save()
+            this.state.figures.dates_tooltip.context.fillStyle = '#323232'
+            this.state.figures.dates_tooltip.context.fillRect(
+                i * this.state.figures.main.scale.width - 30,
+                0,
+                60,
+                this.state.figures.dates_tooltip.get_height() * 0.4
+            )
+            this.state.figures.dates_tooltip.context.font = this.font
+            this.state.figures.dates_tooltip.context.fillStyle = '#ffffff'
+            this.state.figures.dates_tooltip.context.fillText(
+                this.state.meta_data.data[0][i].date,
+                i * this.state.figures.main.scale.width - 25,
+                this.state.figures.dates_tooltip.get_height() * (
+                    this.state.figures.dates_tooltip.padding.top + 0.3
+                )
+            )
+            this.state.figures.dates_tooltip.context.restore()
+            // Assigning cursor tooltips
+            let tooltips = []
+            this.props.data.map((log, ind) => {
+                const data = this.state.meta_data.data[ind]
                 // Data tooltips
                 const {date, value, balance, stocks} = data[i]
                 // Drawing data point
-                context.beginPath()
-                context.arc(
+                this.state.figures.hit.context.beginPath()
+                this.state.figures.hit.context.arc(
                     i * this.state.figures.main.scale.width,
-                    this.state.figures.main.axes.y - value * this.state.figures.main.scale.height,
+                    this.state.figures.main.axes.y - value *
+                    this.state.figures.main.scale.height,
                     0.005 * this.state.figures.hit.get_width(),
                     0,
                     2 * Math.PI
                 )
-                context.stroke()
-                context.closePath()
+                this.state.figures.hit.context.stroke()
+                this.state.figures.hit.context.closePath()
                 tooltips.push({
                     strategy: log.strategy,
                     value: {
@@ -415,19 +477,27 @@ export default class PlotDateValue extends React.Component {
                     },
                     stocks: stocks,
                 })
-            }
-        })
-        this.setState({
-            tooltips: {
-                tooltips: tooltips,
-                date: date
-            }
-        })
+            })
+            this.setState({tooltips: tooltips})
+        }
     }
     // Clear coordinate pointer and tooltips if mouse pointer is out of canvas
     mouseOutHandlerMain() {
-        const context = this.state.figures.hit.context
-        context.clearRect(0, 0, this.state.figures.hit.get_width(), this.state.figures.hit.get_height())
+        this.state.figures.hit.context.clearRect(
+            0, 0,
+            this.state.figures.hit.get_width(),
+            this.state.figures.hit.get_height()
+        )
+        this.state.figures.value_tooltip.context.clearRect(
+            0, 0,
+            this.state.figures.value_tooltip.get_width(),
+            this.state.figures.value_tooltip.get_height()
+        )
+        this.state.figures.dates_tooltip.context.clearRect(
+            0, 0,
+            this.state.figures.dates_tooltip.get_width(),
+            this.state.figures.dates_tooltip.get_height()
+        )
         this.setState({tooltips: null})
     }
     // Date range drag change
@@ -486,33 +556,29 @@ export default class PlotDateValue extends React.Component {
     }
     // After-render plot building
     componentDidMount() {
-        if (this.is_enough_data) {
-            let state = this.state
-            Object.keys(state.figures).map(key => {  // Setting up figures
-                state.figures[key].set_window()
-            })
-            // Setting basic observed data range
-            const data_amount = Math.min.apply(
-                null,
-                this.props.data.map(log => Object.keys(log.data).length)
+        const data_amount = this.props.data[0].data.length
+        if (data_amount >= 5) {
+            Object.values(this.state.figures).forEach(figure => figure.set_window())
+            this.recalculate_metadata(
+                {  // Setting basic observed data range
+                    start: 1 - (
+                        data_amount <= this.max_data ?
+                            data_amount :
+                            this.max_data
+                    ) / data_amount,
+                    end: 1
+                }
             )
-            state.data_range = {
-                start: 1 - (data_amount <= this.max_data ? data_amount : this.max_data) / data_amount,
-                end: 1
-            }
-            // Applying changes and calling drawing method
-            this.setState(state, this.plot)
         }
     }
     render() {
-        if (this.is_enough_data) {
+        if (this.props.data[0].data.length) {
             const tooltips = this.state.tooltips ?
                 <div className={'plot_date_value_tooltips'}>
-                    <span>Date: {this.state.tooltips.date}</span>
-                    {this.state.tooltips.tooltips.map(tooltip =>
+                    {this.state.tooltips.map(tooltip =>
                         <ul key={tooltip.strategy} className={'plot_date_value_tooltip'}>
                             <li>Strategy: {tooltip.strategy}</li>
-                            <li>Cost: {tooltip.value.percent}% ({tooltip.value.currency})</li>
+                            <li>Value: {tooltip.value.percent}% ({tooltip.value.currency})</li>
                             <li>Balance: {tooltip.balance.percent}% ({tooltip.balance.currency})</li>
                             <li>Stocks:<table><tbody>
                                 {Object.entries(tooltip.stocks).map(([name, amount]) =>
@@ -547,6 +613,11 @@ export default class PlotDateValue extends React.Component {
                         <canvas
                             ref={this.state.figures.dates.canvas}
                             className={'canvas_dates'}
+                        >Canvas tag is not supported by your browser.
+                        </canvas>
+                        <canvas
+                            ref={this.state.figures.dates_tooltip.canvas}
+                            className={'canvas_dates_tooltip'}
                             onMouseMove={this.mouseMoveHandlerDates}
                             onMouseDown={this.mouseDownHandlerDates}
                             onMouseUp={this.mouseUpHandlerDates}
@@ -555,6 +626,11 @@ export default class PlotDateValue extends React.Component {
                         <canvas
                             ref={this.state.figures.value.canvas}
                             className={'canvas_value'}
+                        >Canvas tag is not supported by your browser.
+                        </canvas>
+                        <canvas
+                            ref={this.state.figures.value_tooltip.canvas}
+                            className={'canvas_value_tooltip'}
                         >Canvas tag is not supported by your browser.
                         </canvas>
                     </div>

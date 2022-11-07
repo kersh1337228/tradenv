@@ -39,7 +39,6 @@ export default class LogDetail extends React.Component {
 
     render() {
         try {
-            console.log(this.state)
             return (
                 <div className="log_detail">
                     <table className="log_detail_header">
@@ -95,7 +94,6 @@ export default class LogDetail extends React.Component {
                 </div>
             )
         } catch (error) {
-            console.log(error)
             return (<div className="log_detail">Loading...</div>)
         }
     }

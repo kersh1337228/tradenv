@@ -24,11 +24,11 @@ def simple_periodic(
     )
     logs = pd.DataFrame(
         data={
-            'balance': (portfolio.balance,),
-            'value': (portfolio.balance,),
-            'stocks': (pd.Series(index=symbols, data=0),),
+            'balance': (portfolio.balance,) * period_length,
+            'value': (portfolio.balance,) * period_length,
+            'stocks': (pd.Series(index=symbols, data=0),) * period_length,
         },
-        index=(date_range[period_length - 1],)
+        index=date_range[:period_length]
     )
     for date in date_range[:-period_length]:
         log = copy.deepcopy(logs.iloc[-1])
@@ -95,16 +95,19 @@ def ma_levels(
         portfolio_quotes.index.levels[0],
         pd.date_range(range_start, range_end)
     )
-    skip = max((0, min(periods) - (  # Days amount with no moving averages
-        pd.Timestamp(range_start) - portfolio_quotes.index[0][1]
-    ).days))
+    skip = max((
+        1,
+        min(periods) - (  # Days amount with no moving averages
+            pd.Timestamp(range_start) - portfolio_quotes.index[0][1]
+        ).days - 1
+    ))
     logs = pd.DataFrame(
         data={
-            'balance': (portfolio.balance,),
-            'value': (portfolio.balance,),
-            'stocks': (pd.Series(index=symbols, data=0),),
+            'balance': (portfolio.balance,) * skip,
+            'value': (portfolio.balance,) * skip,
+            'stocks': (pd.Series(index=symbols, data=0),) * skip,
         },
-        index=(date_range[skip] - date_range.freq,)
+        index=(date_range[:skip])
     )
     for date in date_range[skip:]:
         log = copy.deepcopy(logs.iloc[-1])
@@ -172,16 +175,19 @@ def mutual_ma_positions(
         portfolio_quotes.index.levels[0],
         pd.date_range(range_start, range_end)
     )
-    skip = max((0, min(periods) - (  # Days amount with no moving averages
-            pd.Timestamp(range_start) - portfolio_quotes.index[0][1]
-    ).days))
+    skip = max((
+        1,
+        min(periods) - (  # Days amount with no moving averages
+                pd.Timestamp(range_start) - portfolio_quotes.index[0][1]
+        ).days - 1
+    ))
     logs = pd.DataFrame(
         data={
-            'balance': (portfolio.balance,),
-            'value': (portfolio.balance,),
-            'stocks': (pd.Series(index=symbols, data=0),),
+            'balance': (portfolio.balance,) * skip,
+            'value': (portfolio.balance,) * skip,
+            'stocks': (pd.Series(index=symbols, data=0),) * skip,
         },
-        index=(date_range[skip] - date_range.freq,)
+        index=(date_range[:skip])
     )
     levels_pairs = list(combinations(assigns, 2))
     for date in date_range[skip:]:
