@@ -1,6 +1,7 @@
 /venv/
-/.idea/
-/__pycache/
+**/__pycache/**
 /media/
 db.sqlite3
-*/migrations/
+**/migrations/
+**/.idea/**
+**/node_modules/**

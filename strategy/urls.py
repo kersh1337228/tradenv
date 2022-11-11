@@ -3,7 +3,6 @@ from strategy.views import StrategyListAPIView
 
 
 urlpatterns = [
-    # API URLs
     path(
         'api/list',
         StrategyListAPIView.as_view(),

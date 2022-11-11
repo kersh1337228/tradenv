@@ -2,6 +2,7 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 import LogListDetail from '../log/LogListDetail'
 import PortfolioStockDetail from "./PortfolioStockDetail";
+import $ from 'jquery'
 
 
 export default class PortfolioDetail extends React.Component {
@@ -37,7 +38,7 @@ export default class PortfolioDetail extends React.Component {
         )[1]
         this.setState({loading: true}, () => {
             $.ajax({
-                url: `/portfolio/api/detail/${symbol}`,
+                url: `http://localhost:8000/portfolio/api/detail/${symbol}`,
                 type: 'GET',
                 data: {},
                 success: function (response) {
@@ -59,7 +60,7 @@ export default class PortfolioDetail extends React.Component {
     portfolio_delete() {
         if (confirm('Do you really want to delete the portfolio?')) {
             $.ajax({
-                url: `/portfolio/api/delete/${this.state.portfolio.slug}`,
+                url: `http://localhost:8000/portfolio/api/delete/${this.state.portfolio.slug}`,
                 type: 'DELETE',
                 success: function () {
                     window.location.href = '/portfolio/list'
@@ -73,7 +74,7 @@ export default class PortfolioDetail extends React.Component {
         event.preventDefault()
         let current = this
         $.ajax({
-            url: `/portfolio/api/update/${this.state.portfolio.slug}`,
+            url: `http://localhost:8000/portfolio/api/update/${this.state.portfolio.slug}`,
             type: 'PATCH',
             headers: {  // Sending CSRF token not to get blocked
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
@@ -125,7 +126,7 @@ export default class PortfolioDetail extends React.Component {
         } else {
             let current = this
             $.ajax({
-                url: `/quotes/api/list`,
+                url: `http://localhost:8000/quotes/api/list`,
                 type: 'GET',
                 data: {
                     query: event.target.value,
@@ -149,7 +150,7 @@ export default class PortfolioDetail extends React.Component {
     stocks_add(event) {
         let current = this
         $.ajax({
-            url: `/portfolio/api/detail/${this.state.portfolio.slug}/stocks/add`,
+            url: `http://localhost:8000/portfolio/api/detail/${this.state.portfolio.slug}/stocks/add`,
             type: 'PUT',
             headers: {
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
@@ -172,7 +173,7 @@ export default class PortfolioDetail extends React.Component {
     stocks_alter(stock, priority, amount) {
         let current = this
         $.ajax({
-            url: `/portfolio/api/detail/${this.state.portfolio.slug}/stocks/alter`,
+            url: `http://localhost:8000/portfolio/api/detail/${this.state.portfolio.slug}/stocks/alter`,
             type: 'PUT',
             headers: {
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
@@ -202,7 +203,7 @@ export default class PortfolioDetail extends React.Component {
     stocks_remove(symbol) {
         let current = this
         $.ajax({
-            url: `/portfolio/api/detail/${this.state.portfolio.slug}/stocks/remove`,
+            url: `http://localhost:8000/portfolio/api/detail/${this.state.portfolio.slug}/stocks/remove`,
             type: 'PUT',
             headers: {
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
@@ -341,6 +342,7 @@ export default class PortfolioDetail extends React.Component {
                             <th className="portfolio_stocks_change">Change $</th>
                             <th className="portfolio_stocks_change_percent">Change %</th>
                             <th className="portfolio_stocks_volume">Volume</th>
+                            <th className="portfolio_stocks_last_update">Last update</th>
                         </tr>
                     </thead>
                     <tbody>

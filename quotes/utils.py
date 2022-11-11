@@ -1,47 +1,65 @@
-import csv, datetime, time, requests, os, json, asyncio, aiohttp
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'quotes_analysis.settings')
+import os
 import django
-django.setup()
+os.environ.setdefault(  # For local launch
+    'DJANGO_SETTINGS_MODULE',
+    'quotes_analysis.settings'
+)
+django.setup()  # Django multiprocessing required
+
+
+import csv
+import datetime
+import time
+import asyncio
+import aiohttp
 from django.http import Http404
 from quotes.models import StockQuotes
+from django import db
 import pandas as pd
 
 
 async def parse_quote_by_symbol(session: aiohttp.ClientSession, symbol: str, name: str):
     print(f'Symbol: {symbol}\tName: {name}')
-    async with session.get(
-        url=f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}',
-        params={
-            'period1': 0,
-            'period2': int(time.mktime(datetime.datetime.now().timetuple())),
-            'interval': '1d',
-            'frequency': '1d',
-            'events': 'history'
-        },
-        headers={
-            'Connection': 'keep-alive',
-            'Expires': '-1',
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        },
-        timeout=300
-    ) as resp:
-        if resp.status == requests.codes.ok:
-            try:
-                data = (await resp.json())['chart']['result'][0]
-                prices = pd.DataFrame(
-                    index=pd.to_datetime(data['timestamp'], unit="s").normalize(),
-                    data=data['indicators']['quote'][0]
-                ).loc[:, ('open', 'high', 'low', 'close', 'volume')]
-                await StockQuotes.objects.acreate(
-                    name=name,
-                    symbol=symbol,
-                    quotes=prices.to_json()
-                )
-            except KeyError or IndexError:
-                print(f'Error occurred during parsing symbol: {symbol}')
-        else:
-            print(f'No data for such symbol: {symbol}')
+    try:
+        async with session.get(
+            url=f'https://query1.finance.yahoo.com/v8/finance/chart/{symbol}',
+            params={
+                'period1': 0,
+                'period2': int(time.mktime(datetime.datetime.now().timetuple())),
+                'interval': '1d',
+                'frequency': '1d',
+                'events': 'history'
+            },
+            headers={
+                'Connection': 'keep-alive',
+                'Expires': '-1',
+                'Upgrade-Insecure-Requests': '1',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            timeout=300
+        ) as resp:
+            if resp.status == 200:
+                try:
+                    data = (await resp.json())['chart']['result'][0]
+                    prices = pd.DataFrame(
+                        index=pd.to_datetime(data['timestamp'], unit="s").normalize(),
+                        data=data['indicators']['quote'][0]
+                    ).loc[:, ('open', 'high', 'low', 'close', 'volume')]
+                    await StockQuotes.objects.acreate(
+                        name=name,
+                        symbol=symbol,
+                        quotes=prices
+                    )
+                except KeyError or IndexError:
+                    print(f'Error occurred during parsing symbol: {symbol}.')
+                except django.db.utils.IntegrityError:
+                    print(f'Symbol {symbol} already exists in database.')
+                except ValueError:
+                    print(f'Wrong timeframe format for symbol: {symbol}.')
+            else:
+                print(f'No data for such symbol: {symbol}.')
+    except asyncio.TimeoutError:
+        print(f'Timeout limit exceeded for symbol: {symbol}.')
 
 
 # Parsing quotes names, symbols and etc.
@@ -54,22 +72,24 @@ async def parse_quotes_names() -> None:
                 'apikey': StockQuotes.api_key,
             }
         ) as response:
-            if response.status == requests.codes.ok:  # Checking if the response is successful
+            if response.status == 200:  # Checking if the response is successful
                 rows = csv.reader(  # Decoding and serializing csv
                     (await response.text('utf-8')).splitlines(),
                     delimiter=','
                 )
                 next(rows)  # Moving to next line to skip header row
+                async with asyncio.TaskGroup() as tg:
+                    for row in rows:
+                        tg.create_task(
+                            parse_quote_by_symbol(
+                                session, row[0], row[1]
+                            )
+                        )
             else:
                 raise Exception(
                     f'Parsing error. Http response '
                     f'status code is {response.status}'
                 )
-        await asyncio.gather(
-            *(asyncio.ensure_future(
-                parse_quote_by_symbol(session, row[0], row[1])
-            ) for row in rows)
-        )
 
 
 def paginate(current_page: int, limit: int) -> dict:  # Paginate quotes list pages

@@ -1,9 +1,11 @@
 import React from 'react'
 import {dtype_to_field} from '../forms/utils'
+import $ from 'jquery'
 
 
 export default class AnalysisForm extends React.Component {
     constructor(props) { // Initialization
+        document.title = 'Analysis'
         super(props)
         this.state = {
             portfolios: [],
@@ -27,7 +29,7 @@ export default class AnalysisForm extends React.Component {
     initial_request() {
         let current = this
         $.ajax({
-            url: `/analysis/form`,
+            url: `http://localhost:8000/analysis/api/form`,
             type: 'GET',
             data: {
                 step: 'initial',
@@ -45,7 +47,7 @@ export default class AnalysisForm extends React.Component {
         if (event.target.value) {
             let current = this
             $.ajax({
-                url: `/analysis/form`,
+                url: `http://localhost:8000/analysis/api/form`,
                 type: 'GET',
                 data: {
                     step: 'portfolio',
@@ -88,7 +90,7 @@ export default class AnalysisForm extends React.Component {
     end_date_choose() {
         let current = this
         $.ajax({
-            url: `/strategy/api/list`,
+            url: `http://localhost:8000/strategy/api/list`,
             type: 'GET',
             data: {},
             success: function (response) {
@@ -146,7 +148,7 @@ export default class AnalysisForm extends React.Component {
         })
         let current = this
         $.ajax({
-            url: `/analysis/api/submit`,
+            url: `http://localhost:8000/analysis/api/submit`,
             type: 'POST',
             headers: {  // Sending CSRF token not to get blocked
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],

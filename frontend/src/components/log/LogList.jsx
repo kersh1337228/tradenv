@@ -1,5 +1,6 @@
 import React from 'react'
 import LogListDetail from './LogListDetail'
+import $ from 'jquery'
 
 
 export default class LogList extends React.Component {
@@ -16,7 +17,7 @@ export default class LogList extends React.Component {
     initial_request() {
         let current = this
         $.ajax({
-            url: `/log/api/list`,
+            url: `http://localhost:8000/log/api/list`,
             type: 'GET',
             data: {},
             success: function (response) {

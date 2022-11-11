@@ -1,9 +1,6 @@
 Django
 djangorestframework
-asgiref
-Pillow
 numpy
 pandas
-beautifulsoup4
-requests
 aiohttp
+daphne

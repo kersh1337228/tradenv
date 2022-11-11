@@ -1,5 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
+import $ from 'jquery'
 
 
 export default class PortfolioList extends React.Component {
@@ -22,7 +23,7 @@ export default class PortfolioList extends React.Component {
         let current = this
         current.setState({loading: true})
         $.ajax({
-            url: `/portfolio/api/list`,
+            url: `http://localhost:8000/portfolio/api/list`,
             type: 'GET',
             data: {},
             success: function (response) {
@@ -48,17 +49,18 @@ export default class PortfolioList extends React.Component {
         let current = this
         event.preventDefault()
         $.ajax({
-            url: `/portfolio/api/create`,
+            url: `http://localhost:8000/portfolio/api/create`,
             type: 'POST',
             headers: {
                 'X-CSRFToken': document.cookie.match(
                     /csrftoken=([\w]+)[;]?/
                 )[1],
             },
-            data: {
+            contentType: 'application/json',
+            data: JSON.stringify({
                 name: event.target.name.value,
-                balance: event.target.balance.value
-            },
+                balance: event.target.balance.valueAsNumber
+            }),
             success: function (response) {
                 let portfolios = current.state.portfolios
                 portfolios.unshift(response.portfolio)
@@ -81,31 +83,32 @@ export default class PortfolioList extends React.Component {
 
     render() {
         let portfolio_list = this.state.portfolios.length ?
-            <div className="portfolio_list">
-                <div className="portfolio_list_header">
-                    <ul>
-                        <li className="portfolio_list_name">Name</li>
-                        <li className="portfolio_list_balance">Balance</li>
-                        <li className="portfolio_list_stocks">Shares</li>
-                        <li className="portfolio_list_logs">Logs</li>
-                        <li className="portfolio_list_created">Created</li>
-                        <li className="portfolio_list_updated">Last updated</li>
-                    </ul>
-                </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th className="portfolio_list_name">Name</th>
+                        <th className="portfolio_list_balance">Balance</th>
+                        <th className="portfolio_list_stocks">Stocks amount</th>
+                        <th className="portfolio_list_created">Created</th>
+                        <th className="portfolio_list_updated">Last updated</th>
+                    </tr>
+                </thead>
+                <tbody>
                 {this.state.portfolios.map(portfolio =>
-                    <Link to={'/portfolio/detail/' + portfolio.slug} key={portfolio.slug}>
-                        <div className="portfolio_list_detail">
-                            <ul>
-                                <li className="portfolio_list_detail_name">{portfolio.name}</li>
-                                <li className="portfolio_list_detail_balance">{portfolio.balance}</li>
-                                <li className="portfolio_list_detail_stocks">{portfolio.stocks.length}</li>
-                                <li className="portfolio_list_detail_created">{portfolio.created}</li>
-                                <li className="portfolio_list_detail_last_updated">{portfolio.last_updated}</li>
-                            </ul>
-                        </div>
-                    </Link>
+                    <tr key={portfolio.slug}>
+                        <td className="portfolio_list_detail_name">
+                            <Link to={'/portfolio/detail/' + portfolio.slug}>
+                                {portfolio.name}
+                            </Link>
+                        </td>
+                        <td className="portfolio_list_detail_balance">{portfolio.balance}</td>
+                        <td className="portfolio_list_detail_stocks">{portfolio.stocks_amount}</td>
+                        <td className="portfolio_list_detail_created">{portfolio.created}</td>
+                        <td className="portfolio_list_detail_last_updated">{portfolio.last_updated}</td>
+                    </tr>
                 )}
-            </div> : <h1 className="portfolio_list">
+                </tbody>
+            </table> : <h1 className="portfolio_list">
                 {this.state.loading ? 'Loading...' : 'No portfolios yet.'}
             </h1>
         return(
@@ -129,7 +132,7 @@ export default class PortfolioList extends React.Component {
                                 <li key={error}>{error}</li>
                             )}
                         </ul> : null}
-                        <input name={'balance'} type={'text'} placeholder={'Portfolio balance'} required={true}/>
+                        <input name={'balance'} type={'number'} placeholder={'Portfolio balance'} required={true}/>
                         <input type={'submit'} value={'Submit'} className={'button_div'}
                                id={'portfolio_list_create_button'}/>
                     </form>

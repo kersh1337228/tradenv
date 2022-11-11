@@ -1,5 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
+import $ from 'jquery'
 
 
 export default class LogListDetail extends React.Component {
@@ -13,7 +14,7 @@ export default class LogListDetail extends React.Component {
         if (confirm(`Do you really want to delete the log?`)) {
             let current = this
             $.ajax({
-                url: `/log/api/delete/${this.props.log.slug}`,
+                url: `http://localhost:8000/log/api/delete/${this.props.log.slug}`,
                 type: 'DELETE',
                 success: function () {
                     current.props.remove(current.props.log.slug)

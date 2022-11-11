@@ -1,6 +1,8 @@
 import React from 'react'
 import ColorMixer from '../ColorMixer/ColorMixer.jsx'
 import './PlotFinancial.css'
+import {dtype_to_field} from '../../forms/utils'
+import $ from 'jquery'
 
 
 // Figure class containing main plot component data
@@ -207,16 +209,20 @@ export default class PlotFinancial extends React.Component {
         const [min_value, max_value] = [
             Math.min.apply(
                 null, Array.from(
-                    Object.values(data), obj => obj.low
-                ).concat(...indicators.filter(
-                    value => value !== null
+                    Object.values(data), obj => obj.high
+                ).concat(...indicators.map(
+                    ind => ind.filter(
+                        value => value !== null
+                    )
                 ))
             ),
             Math.max.apply(
                 null, Array.from(
                     Object.values(data), obj => obj.high
-                ).concat(...indicators.filter(
-                    value => value !== null
+                ).concat(...indicators.map(
+                    ind => ind.filter(
+                        value => value !== null
+                    )
                 ))
             )
         ]
@@ -416,7 +422,7 @@ export default class PlotFinancial extends React.Component {
         // Drawing value scale
         step = this.state.meta_data.value.spread / (this.state.figures.main.grid.horizontal.amount - 2)
         this.state.figures.value.context.font = this.font
-        for (let i = this.state.meta_data.value.min; i < this.state.meta_data.value.max + step; i += step) {
+        for (let i = this.state.meta_data.value.min; i < this.state.meta_data.value.max + step * 0.5; i += step) {
             this.state.figures.value.context.beginPath()
             const y = this.state.figures.value.get_height() * (
                 1 - (i - this.state.meta_data.value.min) / step /
@@ -630,7 +636,7 @@ export default class PlotFinancial extends React.Component {
                     indicators: this.state.indicators.active.filter(indicator => indicator.active).map(
                         indicator => Object.fromEntries(
                             [
-                                ['displayed_name', indicator.displayed_name],
+                                ['verbose_name', indicator.verbose_name],
                                 ['data', indicator.data.slice(
                                     Math.floor(this.props.data.length * this.state.data_range.start),
                                     Math.ceil(this.props.data.length * this.state.data_range.end)
@@ -722,17 +728,22 @@ export default class PlotFinancial extends React.Component {
     }
     // Indicator data query
     get_indicator(event) {
+        event.preventDefault()
         let current = this
         $.ajax({
-            url: `/quotes/api/plot/indicators/detail/${
-                this.state.indicators.selected.alias
+            url: `http://localhost:8000/quotes/api/plot/indicators/detail/${
+                this.state.indicators.selected.name
             }`,
             type: 'GET',
             data: {
                 symbol: this.props.symbol,
                 range_start: this.props.data[0].date,
-                range_end: this.props.data[this.props.data.length - 1],
-                args: JSON.stringify(Object.fromEntries((new FormData(event.target.parentElement)).entries())),
+                range_end: this.props.data[this.props.data.length - 1].date,
+                args: JSON.stringify(
+                    Object.fromEntries(
+                        (new FormData(event.target)).entries()
+                    )
+                ),
             },
             success: function (response) {
                 // Applying front-end parameters
@@ -742,10 +753,10 @@ export default class PlotFinancial extends React.Component {
                 response.active = true
                 let indicators = current.state.indicators
                 if (indicators.active.find(
-                    indicator => indicator.displayed_name === indicators.selected.displayed_name
+                    indicator => indicator.verbose_name === indicators.selected.verbose_name
                 )) {
                     indicators.active[indicators.active.indexOf(indicators.active.find(
-                        indicator => indicator.displayed_name === indicators.selected.displayed_name
+                        indicator => indicator.verbose_name === indicators.selected.verbose_name
                     ))] = response
                 } else {
                     indicators.active.push(response)
@@ -762,7 +773,7 @@ export default class PlotFinancial extends React.Component {
     setIndicatorColor(color) {
         let indicators = this.state.indicators
         indicators.active[indicators.active.indexOf(indicators.active.find(
-            indicator => indicator.displayed_name === indicators.selected.displayed_name
+            indicator => indicator.verbose_name === indicators.selected.verbose_name
         ))].style.color = color
         indicators.selected.color = color
         this.setState({indicators: indicators}, () => {
@@ -774,7 +785,7 @@ export default class PlotFinancial extends React.Component {
         if (this.props.data.length > 5) {
             let current = this
             $.ajax({
-                url: '/quotes/api/plot/indicators/list',
+                url: 'http://localhost:8000/quotes/api/plot/indicators/list',
                 type: 'GET',
                 data: {},
                 success: function (response) {
@@ -816,7 +827,7 @@ export default class PlotFinancial extends React.Component {
                     }}>+</span>
                     <ul className={'indicators_available_list'}
                         style={{display: 'none'}}>{this.state.indicators.available.map(
-                        indicator => <li key={indicator.alias} onClick={() => {
+                        indicator => <li key={indicator.name} onClick={() => {
                             let indicators = this.state.indicators
                             indicators.selected = null
                             this.setState({indicators: indicators}, () => {
@@ -829,22 +840,22 @@ export default class PlotFinancial extends React.Component {
                     )}</ul>
                     <span>Active indicators list:</span>
                     <ul>{this.state.indicators.active.map(
-                        indicator => <li key={indicator.displayed_name} onClick={() => {
+                        indicator => <li key={indicator.verbose_name} onClick={() => {
                             let indicators = this.state.indicators
                             indicators.selected = null
                             this.setState({indicators: indicators}, () => {
                                 indicators.active[indicators.active.indexOf(indicators.active.find(
-                                    ind => ind.alias = indicator.alias
+                                    ind => ind.name = indicator.name
                                 ))].selected = true
                                 indicators.selected = indicator
                                 this.setState({indicators: indicators})
                             })
                         }}><ul>
-                            <li>{indicator.displayed_name}</li>
+                            <li>{indicator.verbose_name}</li>
                             <li onClick={() => {
                                 let indicators = this.state.indicators
                                 indicators.active[indicators.active.indexOf(indicators.active.find(
-                                    i => i.displayed_name === indicator.displayed_name
+                                    i => i.verbose_name === indicator.verbose_name
                                 ))].active = !indicator.active
                                 this.setState({indicators: indicators}, () => {
                                     this.recalculate_metadata(this.state.data_range)
@@ -853,7 +864,7 @@ export default class PlotFinancial extends React.Component {
                             <li onClick={() => {
                                 let indicators = this.state.indicators
                                 indicators.active.splice(indicators.active.indexOf(indicators.active.find(
-                                    i => i.displayed_name === indicator.displayed_name
+                                    i => i.verbose_name === indicator.verbose_name
                                 )), 1)
                                 if (indicator.selected) {
                                     indicators.selected = null
@@ -868,17 +879,30 @@ export default class PlotFinancial extends React.Component {
                 <div>
                     <span>Arguments</span>
                     {this.state.indicators.selected ?
-                        <form className={'indicator_form'}>{
-                            Object.entries(this.state.indicators.selected.args).map(
-                                ([name, value]) =>
-                                    <input key={name} name={name} placeholder={name} defaultValue={value}/>
+                        <form className={'indicator_form'} onSubmit={this.get_indicator}>
+                            {Object.entries(this.state.indicators.selected.args).map(([name, value]) =>
+                                <div key={name}>
+                                    <label htmlFor={name}>
+                                        {name.replace('_', ' ').replace(
+                                            name[0], name[0].toUpperCase()
+                                        )}
+                                    </label>
+                                    {(() => {
+                                        const dtype = this.state.indicators.available.find(
+                                            ind => ind.name === this.state.indicators.selected.name
+                                        ).args[name]
+                                        return dtype === value ?
+                                            dtype_to_field(name, dtype) :
+                                            dtype_to_field(name, dtype, value)
+                                    })()}
+                                </div>
                             )}
-                            <div onClick={() => {
+                            <button onClick={() => {
                                 let indicators = this.state.indicators
                                 indicators.selected = null
                                 this.setState({indicators: indicators})
-                            }}>Cancel</div>
-                            <div onClick={this.get_indicator}>Apply</div>
+                            }}>Cancel</button>
+                            <button type={'submit'}>Apply</button>
                         </form> :
                         <span>...</span>
                     }
@@ -904,8 +928,8 @@ export default class PlotFinancial extends React.Component {
                     <span>Volume: {this.state.tooltips.volume}M</span>
                     {this.state.tooltips.indicators.map(
                         indicator =>
-                            <span key={indicator.displayed_name}>
-                                {indicator.displayed_name}: {indicator.data}
+                            <span key={indicator.verbose_name}>
+                                {indicator.verbose_name}: {indicator.data}
                             </span>
                     )}
                 </div> : null

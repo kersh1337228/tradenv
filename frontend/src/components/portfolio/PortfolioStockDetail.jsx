@@ -79,6 +79,12 @@ export default class PortfolioStockDetail extends React.Component {
                     <td className="quotes_list_detail_volume">
                         {this.props.stock.quotes.tendency.quotes.volume}
                     </td>
+                    <td className="quotes_list_detail_volume">
+                        {this.props.stock.quotes.tendency.quotes.volume}
+                    </td>
+                    <td className="quotes_list_detail_last_update">
+                        {this.props.stock.quotes.last_timestamp}
+                    </td>
                     <td className="portfolio_stock_detail_edit_menu">
                         <button onClick={() => {
                             this.setState({
@@ -117,6 +123,9 @@ export default class PortfolioStockDetail extends React.Component {
                     </td>
                     <td className="quotes_list_detail_volume">
                         {this.props.stock.quotes.tendency.quotes.volume}
+                    </td>
+                    <td className="quotes_list_detail_last_update">
+                        {this.props.stock.quotes.last_timestamp}
                     </td>
                     <td className="portfolio_stock_detail_edit_menu">
                         <ul>

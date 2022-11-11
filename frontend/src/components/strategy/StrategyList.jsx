@@ -1,5 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
+import $ from 'jquery'
 
 
 export default class StrategyList extends React.Component {

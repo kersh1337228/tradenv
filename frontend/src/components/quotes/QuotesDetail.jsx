@@ -1,5 +1,6 @@
 import React from 'react'
-import PlotFinancial from "../../plots/PlotFinancial/PlotFinancial";
+import PlotFinancial from "../plots/PlotFinancial/PlotFinancial";
+import $ from 'jquery'
 
 
 export default class QuotesDetail extends React.Component {
@@ -16,7 +17,7 @@ export default class QuotesDetail extends React.Component {
             /\/quotes\/detail\/([\w]+)/
         )[1]
         $.ajax({
-            url: `/quotes/api/detail/${symbol}`,
+            url: `http://localhost:8000/quotes/api/detail/${symbol}`,
             type: 'GET',
             data: {},
             success: function (response) {

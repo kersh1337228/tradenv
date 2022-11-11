@@ -1,21 +1,8 @@
 from django.urls import path
 from portfolio.views import PortfolioListAPIView, PortfolioAPIView
-from analysis.views import GenericView
 
 
 urlpatterns = [
-    # Generic request urls
-    path(
-        'list',
-        GenericView.as_view(),
-        name='portfolio_list'
-    ),
-    path(
-        'detail/<slug:slug>',
-        GenericView.as_view(),
-        name='portfolio_detail'
-    ),
-    # API URLs (ajax request)
     path(
         'api/create',
         PortfolioAPIView.as_view(),

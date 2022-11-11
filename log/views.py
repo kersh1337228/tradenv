@@ -3,43 +3,37 @@ from rest_framework.response import Response
 from log.models import Log
 from log.serializers import LogSerializer
 from asgiref.sync import async_to_sync, sync_to_async
+from asyncAPI.views import AsyncAPIView
 
 
-class LogListAPIView(
-    generics.ListAPIView
-):
-    def get(self, request, *args, **kwargs):
-        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
-            return Response(
-                data={
-                    'logs': LogSerializer(
+class LogListAPIView(AsyncAPIView):
+    async def get(self, request, *args, **kwargs):
+        return Response(
+            data={
+                'logs': await sync_to_async(
+                    lambda: LogSerializer(
                         Log.objects.all(),
                         many=True
                     ).data
-                },
-                status=200,
-            )
+                )()
+            },
+            status=200,
+        )
 
 
 # Getting log details or deleting the one
-class LogAPIView(
-    generics.RetrieveDestroyAPIView
-):
-    @async_to_sync
+class LogAPIView(AsyncAPIView):
     async def get(self, request, *args, **kwargs):  # Selecting log matching request
-        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
-            log = await Log.objects.aget(slug=kwargs.get('slug'))
-            return Response(
-                data={
-                    'log': await sync_to_async(
-                        lambda: LogSerializer(log).data
-                    )()
-                },
-                status=200
-            )
+        log = await Log.objects.aget(slug=kwargs.get('slug'))
+        return Response(
+            data={
+                'log': await sync_to_async(
+                    lambda: LogSerializer(log).data
+                )()
+            },
+            status=200
+        )
 
-    @async_to_sync
     async def delete(self, request, *args, **kwargs):  # Deleting log matching request
-        if request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
-            await Log.objects.filter(slug=kwargs.get('slug')).adelete()
-            return Response({}, status=200)
+        await Log.objects.filter(slug=kwargs.get('slug')).adelete()
+        return Response({}, status=200)

@@ -1,9 +1,7 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
+import {createRoot} from 'react-dom/client'
+import $ from 'jquery'
 import App from './App'
 
 
-ReactDOM.render(
-    <App />,
-    $('#content').get(0)
-)
+createRoot($('#content').get(0)).render(<App />)

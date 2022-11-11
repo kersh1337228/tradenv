@@ -1,5 +1,6 @@
 import React from 'react'
 import LogListDetail from '../log/LogListDetail'
+import $ from 'jquery'
 
 
 export default class StrategyDetail extends React.Component {
@@ -41,7 +42,7 @@ export default class StrategyDetail extends React.Component {
         let current = this
         const form = this.formRef.current
         $.ajax({
-            url: `${window.location.origin}/strategy/update/${this.state.strategy.slug}/`,
+            url: `http://localhost:8000/strategy/update/${this.state.strategy.slug}/`,
             type: 'PATCH',
             headers: {
                 'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],

@@ -1,12 +1,13 @@
 from django.db import models
-from django.http import Http404
 from django.core import validators as val
 import datetime
 import time
-import requests
 import pandas as pd
 import aiohttp
 from . import indicators as ind
+from asgiref.sync import sync_to_async
+import asyncio
+from django.utils import timezone
 
 
 class DataFrameField(models.JSONField):  # Custom field to store quotes as pandas.DataFrame
@@ -18,14 +19,16 @@ class DataFrameField(models.JSONField):  # Custom field to store quotes as panda
             return pd.DataFrame()
         return pd.read_json(
             super().from_db_value(value, expression, connection)
-        )
+        ).fillna(0.)
 
     def to_python(self, value: pd.DataFrame | None | str):
         if isinstance(value, pd.DataFrame):
             return value
         if not value:
             return pd.DataFrame()
-        return pd.DataFrame(super().to_python(value))
+        return pd.DataFrame(
+            super().to_python(value)
+        ).fillna(0.)
 
     def get_prep_value(self, value: pd.DataFrame):
         return super().get_prep_value(value.to_json())
@@ -76,44 +79,64 @@ class StockQuotes(models.Model):  # Economic market instrument information stora
         null=False,
         default='NASDAQ'
     )
+    last_updated = models.DateTimeField(
+        auto_now_add=True
+    )
 
     # API key for alpha_vantage api
     api_key = 'J7JRRVLFS9HZFPBY'
 
-    async def update_quotes(self):  # Getting fresh data on stock quotes
-        async with aiohttp.ClientSession() as session:  # Establishing request session
-            async with session.get(  # Making get request
-                    url=f'https://query1.finance.yahoo.com/v8/finance/chart/{self.symbol}',
-                    params={
-                        'period1': 0,
-                        'period2': int(time.mktime(datetime.datetime.now().timetuple())),
-                        'interval': '1d',
-                        'frequency': '1d',
-                        'events': 'history'
-                    },
-                    headers={
-                        'Connection': 'keep-alive',
-                        'Expires': '-1',
-                        'Upgrade-Insecure-Requests': '1',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, '
-                                      'like Gecko) Chrome/91.0.4472.124 Safari/537.36 '
-                    },
-                    timeout=300
-            ) as resp:
-                if resp.status == requests.codes.ok:  # Found (likely)
-                    try:
-                        data = (await resp.json())['chart']['result'][0]  # Selecting only data necessary (no metadata)
-                        prices = pd.DataFrame(  # Creating pandas DataFrame to ensure right future json formatting
-                            index=pd.to_datetime(data['timestamp'], unit="s").normalize(),
-                            data=data['indicators']['quote'][0]
-                        ).loc[:, ('open', 'high', 'low', 'close', 'volume')]
-                        await StockQuotes.objects.filter(  # Asynchronously updating quotes
-                            symbol=self.symbol
-                        ).aupdate(quotes=prices.to_json())
-                    except KeyError or IndexError:  # No data returned despite code 200 (unlikely)
-                        raise KeyError(f'Error occurred during parsing symbol: {self.symbol}')
-                else:  # Not found (unlikely)
-                    raise Http404(f'No data for such symbol: {self.symbol}')
+    @property  # Last available quotes date
+    def last_timestamp(self):
+        return self.quotes.index[-1].strftime('%Y/%m/%d')
+
+    async def update_quotes(self, session: aiohttp.ClientSession):  # Refreshing stock quotes
+        if self.last_updated.date() != datetime.date.today():  # Check if updated recently
+            try:
+                async with session.get(  # Making get request
+                        url=f'https://query1.finance.yahoo.com/v8/finance/chart/{self.symbol}',
+                        params={
+                            'period1': 0,
+                            'period2': int(time.mktime(datetime.datetime.now().timetuple())),
+                            'interval': '1d',
+                            'frequency': '1d',
+                            'events': 'history'
+                        },
+                        headers={
+                            'Connection': 'keep-alive',
+                            'Expires': '-1',
+                            'Upgrade-Insecure-Requests': '1',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        },
+                        timeout=300  # Bigger timeout for
+                ) as resp:
+                    if resp.status == 200:
+                        try:
+                            data = (await resp.json())['chart']['result'][0]  # Selecting only data necessary (no metadata)
+                            prices = pd.DataFrame(
+                                index=pd.to_datetime(data['timestamp'], unit="s").normalize(),
+                                data=data['indicators']['quote'][0]
+                            ).loc[:, ('open', 'high', 'low', 'close', 'volume')]
+                            self.quotes = prices
+                            self.last_updated = timezone.now()
+                            await sync_to_async(self.save)()
+                        except KeyError or IndexError:  # No data returned despite code 200
+                            print(
+                                f'Error occurred during quotes update '
+                                f'attempt for symbol: {self.symbol}'
+                            )
+                        except ValueError:
+                            print(f'Wrong timeframe format for symbol: {self.symbol}.')
+                    else:
+                        print(
+                            f'No data found during quotes update '
+                            f'attempt for symbol: {self.symbol}'
+                        )
+            except asyncio.TimeoutError:
+                print(
+                    f'Timeout limit exceeded during quotes '
+                    f'update attempt for symbol: {self.symbol}'
+                )
 
     # Returns last day and the day before difference
     def get_tendency(self) -> dict:
@@ -131,31 +154,6 @@ class StockQuotes(models.Model):  # Economic market instrument information stora
         quotes = self.quotes  # Quotes serialization to JSON
         quotes.index = quotes.index.strftime('%Y-%m-%d')
         return quotes.rename_axis('date').reset_index().to_dict('records')
-
-    def get_moving_averages(  # Moving Averages values for stock specified
-            self,
-            range_start: str = None,
-            range_end: str = None,
-            period_length: int = 200,
-            price: str = 'close',
-            _type: str = 'sma'
-    ) -> dict:
-        return {
-            'name': _type,
-            'displayed_name': f'{_type} {period_length} {price}',
-            'args': {
-                'period_length': period_length,
-                'price': price
-            },
-            'data': pd.Series(
-                data={
-                    'sma': ind.sma,
-                    'ema': ind.ema,
-                    'vwma': ind.wma(self.quotes['volume'].to_numpy()),
-                }[_type](self.quotes, price, period_length),
-                index=self.quotes.index
-            )[slice(range_start, range_end)].tolist()
-        }
 
     def __str__(self):
         return self.name

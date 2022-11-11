@@ -13,19 +13,20 @@ class MultiIndexDataFrameField(models.JSONField):
         if not value:
             return pd.DataFrame()
         raws = super().from_db_value(value, expression, connection)
-        df = pd.concat(
+        return pd.concat(
             objs=map(pd.read_json, raws.values()),
             axis=0,
             keys=raws.keys()
-        )
-        return df
+        ).fillna(0.)
 
     def to_python(self, value: pd.DataFrame | None | str):
         if isinstance(value, pd.DataFrame):
             return value
         if not value:
             return pd.DataFrame()
-        return pd.DataFrame(super().to_python(value))
+        return pd.DataFrame(
+            super().to_python(value)
+        ).fillna(0.)
 
     def get_prep_value(self, value: pd.DataFrame):
         return super().get_prep_value(value)

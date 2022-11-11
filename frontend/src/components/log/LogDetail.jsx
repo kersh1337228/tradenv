@@ -1,7 +1,8 @@
 import React from 'react'
-import PlotFinancial from "../../plots/PlotFinancial/PlotFinancial";
-import PlotDateValue from "../../plots/PlotDateValue/PlotDateValue";
+import PlotFinancial from "../plots/PlotFinancial/PlotFinancial";
+import PlotDateValue from "../plots/PlotDateValue/PlotDateValue";
 import './LogDetail.css'
+import $ from 'jquery'
 
 
 export default class LogDetail extends React.Component {
@@ -21,7 +22,7 @@ export default class LogDetail extends React.Component {
             /\/log\/detail\/([\w]+)/
         )[1]
         $.ajax({
-            url: `/log/api/detail/${slug}`,
+            url: `http://localhost:8000/log/api/detail/${slug}`,
             type: 'GET',
             data: {},
             success: function (response) {

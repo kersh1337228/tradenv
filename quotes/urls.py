@@ -1,21 +1,15 @@
 from django.urls import path
 from quotes import views
-from analysis.views import GenericView
 
 
 urlpatterns = [
     path(
-        'list',
-        GenericView.as_view(),
-        name='quotes_list'
-    ),
-    path(
-        'detail/<slug:symbol>',
-        views.QuotesView.as_view(),
-        name='quotes_detail'
-    ),
-    path(
         'api/list',
+        views.QuotesListAPIView.as_view(),
+        name='quotes_api_list'
+    ),
+    path(
+        'api/list/refresh',
         views.QuotesListAPIView.as_view(),
         name='quotes_api_list'
     ),

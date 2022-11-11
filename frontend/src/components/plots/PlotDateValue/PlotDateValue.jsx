@@ -303,7 +303,7 @@ export default class PlotDateValue extends React.Component {
         // Drawing value scale
         step = this.state.meta_data.value.spread / (this.state.figures.main.grid.horizontal.amount - 2)
         this.state.figures.value.context.font = this.font
-        for (let i = this.state.meta_data.value.min; i < this.state.meta_data.value.max + step; i += step) {
+        for (let i = this.state.meta_data.value.min; i < this.state.meta_data.value.max + step * 0.5; i += step) {
             this.state.figures.value.context.beginPath()
             const y = this.state.figures.value.get_height() * (
                 1 - (i - this.state.meta_data.value.min) / step /
@@ -356,7 +356,7 @@ export default class PlotDateValue extends React.Component {
                         data_range.end = data_range.start + (this.state.data_range.end - this.state.data_range.start)
                     } // Check if changes are visible (not visible on bounds)
                     if (data_range.start !== this.state.data_range.start && data_range.end !== this.state.data_range.end) {
-                        this.setState({data_range: data_range}, this.plot)
+                        this.recalculate_metadata(data_range)
                     }
                 }
             } // Select data with maximum length
@@ -537,7 +537,7 @@ export default class PlotDateValue extends React.Component {
                         data_range.start : data_range.start + x_offset
                 } // Check if changes are visible (not visible on bounds)
                 if (data_range.start !== this.state.data_range.start) {
-                    this.setState({data_range: data_range}, this.plot)
+                    this.recalculate_metadata(data_range)
                 }
             }
         }

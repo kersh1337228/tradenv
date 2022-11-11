@@ -5,6 +5,7 @@ from quotes.models import StockQuotes, StockInstance
 class StockQuotesSerializer(serializers.ModelSerializer):  # Full data
     tendency = serializers.ReadOnlyField(source='get_tendency')
     quotes = serializers.ReadOnlyField(source='get_quotes')
+    last_updated = serializers.ReadOnlyField()
 
     class Meta:
         model = StockQuotes
@@ -13,6 +14,7 @@ class StockQuotesSerializer(serializers.ModelSerializer):  # Full data
 
 class StockQuotesSerializerLite(serializers.ModelSerializer):  # No expensive quotes field
     tendency = serializers.ReadOnlyField(source='get_tendency')
+    last_timestamp = serializers.ReadOnlyField()
 
     def to_internal_value(self, data):
         return super().to_internal_value(data)

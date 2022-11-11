@@ -34,3 +34,19 @@ class PortfolioSerializer(serializers.ModelSerializer):
     def get_stocks(self, instance):
         stocks = instance.stocks.order_by('priority')
         return StockInstanceSerializer(stocks, many=True).data
+
+
+class PortfolioSerializerLite(serializers.ModelSerializer):
+    created = serializers.DateTimeField(format='%Y/%m/%d %H:%M', required=False)
+    last_updated = serializers.DateTimeField(format='%Y/%m/%d %H:%M', required=False)
+    stocks_amount = serializers.SerializerMethodField(read_only=True, required=False)
+
+    class Meta:
+        model = Portfolio
+        fields = (
+            'name', 'balance', 'created',
+            'last_updated', 'slug', 'stocks_amount'
+        )
+
+    def get_stocks_amount(self, instance):
+        return instance.stocks.count()

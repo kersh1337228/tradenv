@@ -1,6 +1,7 @@
 import React from 'react'
-import QuotesListDetail from "./QuotesListDetail";
 import Pagination from "./Pagination";
+import {Link} from "react-router-dom";
+import $ from 'jquery'
 
 
 export default class QuotesList extends React.Component {
@@ -11,6 +12,10 @@ export default class QuotesList extends React.Component {
             pagination: {},
             loading: false
         }
+        const page = window.location.href.match(
+            /\?page=(?<number>[\w]+)/
+        )
+        this.page = page ? page.groups.number : 1
         // Methods binding
         this.initial_request = this.initial_request.bind(this)
         this.search = this.search.bind(this)
@@ -21,9 +26,11 @@ export default class QuotesList extends React.Component {
         let current = this
         this.setState({loading: true}, () => {
             $.ajax({
-                url: '/quotes/api/list',
+                url: 'http://localhost:8000/quotes/api/list',
                 type: 'GET',
-                data: {},
+                data: {
+                    page: this.page
+                },
                 success: function (response) {
                     current.setState({
                         quotes: response.quotes,
@@ -39,37 +46,41 @@ export default class QuotesList extends React.Component {
 
     parse_quotes_request() {
         let current = this
-        $.ajax({
-            url: `${window.location.href}`,
-            type: 'PUT',
-            headers: {
-                'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
-            },
-            data: {},
-            success: function (response) {
-                current.setState({
-                    quotes: response.quotes,
-                    pagination: response.pagination
-                })
-            },
-            error: function (response) {}
+        this.setState({loading: true}, () => {
+            $.ajax({
+                url: 'http://localhost:8000/quotes/api/list/refresh',
+                type: 'PUT',
+                headers: {
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([\w]+)[;]?/)[1],
+                },
+                data: {},
+                success: function (response) {
+                    current.setState({
+                        quotes: response.quotes,
+                        pagination: response.pagination,
+                        loading: false
+                    })
+                },
+                error: function (response) {}
+            })
         })
     }
 
     search(event) {
         let current = this
-        const current_page = window.location.href.match(/\/\?page=([\w]+)/)
         $.ajax({
-            url: `/quotes/api/list`,
+            url: `http://localhost:8000/quotes/api/list`,
             type: 'GET',
             data: {
                 query: event.target.value,
-                page: current_page ? current_page[1] : 1
+                page: this.page
             },
             success: function (response) {
                 if (response.query === event.target.value) {
                     current.setState({
-                        quotes: response.quotes.length ? response.quotes : 'No quotes matching query',
+                        quotes: response.quotes.length ?
+                            response.quotes :
+                            'No quotes matching query',
                         pagination: response.pagination
                     })
                 }
@@ -85,22 +96,41 @@ export default class QuotesList extends React.Component {
     render() {
         try {  // Checking if there are quotes downloaded
             var quotes_list = this.state.quotes.length ? (
-                <div className={'quotes_list'}>
-                    <div className="quotes_list_header">
-                        <ul>
-                            <li className="quotes_list_symbol">Symbol</li>
-                            <li className="quotes_list_name">Name</li>
-                            <li className="quotes_list_price">Price $</li>
-                            <li className="quotes_list_change">Change $</li>
-                            <li className="quotes_list_change_percent">Change %</li>
-                            <li className="quotes_list_volume">Volume</li>
-                        </ul>
-                    </div>
-                    <div>{this.state.quotes.map(quotes =>
-                        <QuotesListDetail quotes={quotes} key={quotes.symbol}/>
-                    )}</div>
-                    {this.state.pagination ? <Pagination pagination={this.state.pagination} /> : null}
-                </div>
+                <><table>
+                    <thead>
+                        <tr>
+                            <th className="quotes_list_symbol">Symbol</th>
+                            <th className="quotes_list_name">Name</th>
+                            <th className="quotes_list_price">Close</th>
+                            <th className="quotes_list_change">Change</th>
+                            <th className="quotes_list_change_percent">Change %</th>
+                            <th className="quotes_list_volume">Volume</th>
+                            <th className="quotes_list_last_update">Last update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {this.state.quotes.map(stock =>
+                        <tr key={stock.symbol}>
+                            <td>
+                                <Link to={'/quotes/detail/' + stock.symbol}>
+                                    {stock.symbol}
+                                </Link>
+                            </td>
+                            <td>{stock.name}</td>
+                            <td>{Math.round((stock.tendency.quotes.close + Number.EPSILON) * 100) / 100}</td>
+                            <td>{stock.tendency.change}</td>
+                            <td>{stock.tendency.change_percent}</td>
+                            <td>{stock.tendency.quotes.volume}</td>
+                            <td>{stock.last_timestamp}</td>
+                        </tr>
+                    )}
+                    </tbody>
+                </table>
+                {
+                    this.state.pagination ?
+                        <Pagination pagination={this.state.pagination}/> :
+                        null
+                }</>
             ) : this.state.loading ? (
                 <h3>Loading...</h3>
             ) : (
@@ -113,7 +143,7 @@ export default class QuotesList extends React.Component {
                 </span>
             )
         } catch(error) {
-            quotes_list = <h1>Some error occurred during loading stocks</h1>
+            quotes_list = <h3>{this.state.quotes}</h3>
         }
         return(
             <div className={'quote_list_block'}>
