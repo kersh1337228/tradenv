@@ -24,7 +24,7 @@ urlpatterns = [
         name='quotes_api_plot_indicators_list'
     ),
     path(
-        'api/plot/indicators/detail/<slug:type>',
+        'api/plot/indicators/detail/<slug:alias>',
         views.get_quotes_plot_indicator,
         name='quotes_api_plot_indicator_detail'
     )

@@ -78,11 +78,10 @@ async def get_quotes_plot_indicators_list(request, *args, **kwargs):
 @decorators.async_api_view(('GET',))
 async def get_quotes_plot_indicator(request, *args, **kwargs):  # Getting indicator values for certain stock
     return Response(
-        indicators.indicator_wrapper(
-            kwargs.get('type'),
-            (await StockQuotes.objects.only('quotes').aget(
-                symbol=request.query_params.get('symbol')
-            )).quotes,
+        (await StockQuotes.objects.aget(
+            symbol=request.query_params.get('symbol')
+        )).get_indicator(
+            kwargs.get('alias'),
             request.query_params.get('range_start'),
             request.query_params.get('range_end'),
             json.loads(request.query_params.get('args'))

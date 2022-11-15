@@ -1,82 +1,60 @@
 import numpy as np
 import pandas as pd
 from typing import Literal
-import datetime
 import sys
-
-
-def indicator_wrapper(
-    name: str,
-    quotes: pd.DataFrame,
-    range_start: str | datetime.datetime | pd.Timestamp | np.datetime64,
-    range_end: str | datetime.datetime | pd.Timestamp | np.datetime64,
-    args: dict
-) -> dict:
-    indicator = next(filter(lambda i: i['name'] == name, choices))
-    for arg, dtype in indicator['args'].items():
-        match dtype:
-            case 'int':
-                args[arg] = int(args[arg])
-            case 'float':
-                args[arg] = float(args[arg])
-            case 'str':
-                args[arg] = str(args[arg])
-            case 'list[int]':
-                args[arg] = [int(args.pop(key)) for key in tuple(args.keys()) if arg in key]
-            case 'list[float]':
-                args[arg] = [float(args.pop(key)) for key in tuple(args.keys()) if arg in key]
-    return {
-        'name': name,
-        'verbose_name': ' '.join((name,) + tuple(map(str, args.values()))),
-        'args': args,
-        'data': pd.Series(
-            data=getattr(sys.modules[__name__], name)(quotes, **args),
-            index=quotes.index
-        )[slice(range_start, range_end)].tolist()
-    }
 
 
 def sma(
         quotes: pd.DataFrame,
         period_length: int,
         price: Literal['open', 'high', 'low', 'close']
-) -> np.ndarray:
+) -> pd.DataFrame:
     prices = quotes[price].to_numpy()
-    return np.hstack((
-        np.full(period_length, None),
-        np.vectorize(
-            lambda i: prices[i - period_length:i].mean()
-        )(np.arange(period_length, prices.size))
-    ))
+    return pd.DataFrame(
+        data={
+            'sma': np.hstack((
+                np.full(period_length, None),
+                np.vectorize(
+                    lambda i: prices[i - period_length:i].mean()
+                )(np.arange(period_length, prices.size))
+            ))
+        },
+        index=quotes.index
+    )
 
 
 def ema(
         quotes: pd.DataFrame,
         period_length: int,
         price: Literal['open', 'high', 'low', 'close']
-) -> np.ndarray:
+) -> pd.DataFrame:
     prices = quotes[price].to_numpy()
     q = (period_length - 1) / (period_length + 1)
-    return np.hstack((
-        np.full(period_length, None),
-        np.vectorize(
-            lambda i: np.average(
-                prices[i - period_length:i],
-                weights=q ** (i - np.arange(i - period_length, i)) / (1 - q)
-            )
-        )(np.arange(period_length, prices.size))
-    ))
+    return pd.DataFrame(
+        data={
+            'ema': np.hstack((
+                np.full(period_length, None),
+                np.vectorize(
+                    lambda i: np.average(
+                        prices[i - period_length:i],
+                        weights=q ** (i - np.arange(i - period_length, i)) / (1 - q)
+                    )
+                )(np.arange(period_length, prices.size))
+            ))
+        },
+        index=quotes.index
+    )
 
 
 def vwma(
     quotes: pd.DataFrame,
     period_length: int,
     price: Literal['open', 'high', 'low', 'close'],
-) -> np.ndarray:
+) -> pd.DataFrame:
     return wma(
         quotes, period_length,
         price, quotes['volume']
-    )
+    ).rename(columns={'wma': 'vwma'})
 
 
 def wma(
@@ -84,42 +62,107 @@ def wma(
     period_length: int,
     price: Literal['open', 'high', 'low', 'close'],
     weights: np.ndarray
-) -> np.ndarray:
+) -> pd.DataFrame:
     prices = quotes[price].to_numpy()
-    return np.hstack((
-        np.full(period_length, None),
-        np.vectorize(
-            lambda i: np.average(
-                prices[i - period_length:i],
-                weights=weights[i - period_length:i]
-            )
-        )(np.arange(period_length, prices.size))
-    ))
+    return pd.DataFrame(
+        data={
+            'wma': np.hstack((
+                np.full(period_length, None),
+                np.vectorize(
+                    lambda i: np.average(
+                        prices[i - period_length:i],
+                        weights=weights[i - period_length:i]
+                    )
+                )(np.arange(period_length, prices.size))
+            ))
+        },
+        index=quotes.index
+    )
+
+
+def macd(
+    quotes: pd.DataFrame,
+    fast_period: int,
+    slow_period: int,
+    smoothing_period: int,
+    price: Literal['open', 'high', 'low', 'close'],
+    macd_ma_type: Literal['sma', 'ema'],
+    signal_ma_type: Literal['sma', 'ema']
+) -> pd.DataFrame:
+    result = quotes.assign(
+        macd=lambda data: (
+            getattr(
+                sys.modules[__name__], macd_ma_type
+            )(data, fast_period, price) -
+            getattr(
+                sys.modules[__name__], macd_ma_type
+            )(data, slow_period, price)
+        )
+    )
+    result = result.assign(
+        signal=lambda data: getattr(
+            sys.modules[__name__], signal_ma_type
+        )(data, smoothing_period, 'macd')
+    )
+    result = result.assign(
+        hist=lambda data: data['macd'] - data['signal']
+    )
+    return result[['macd', 'signal', 'hist']].replace([np.nan], [None])
 
 
 choices = [  # Front-end indicators representations
     {
         'verbose_name': 'Simple Moving average',
-        'name': 'sma',
+        'alias': 'sma',
         'args': {
             'period_length': 'int',
             'price': ('open', 'high', 'low', 'close')
         },
+        'separate': False,
+        'plots': {
+            'sma': 'line'
+        }
     },
     {
         'verbose_name': 'Exponential Moving Average',
-        'name': 'ema',
+        'alias': 'ema',
         'args': {
             'period_length': 'int',
             'price': ('open', 'high', 'low', 'close')
+        },
+        'separate': False,
+        'plots': {
+            'ema': 'line'
         }
     },
     {
         'verbose_name': 'Volume Weighted Moving Average',
-        'name': 'vwma',
+        'alias': 'vwma',
         'args': {
             'period_length': 'int',
             'price': ('open', 'high', 'low', 'close')
+        },
+        'separate': False,
+        'plots': {
+            'vwma': 'line'
+        }
+    },
+    {
+        'verbose_name': 'Moving Averages Convergence Divergence',
+        'alias': 'macd',
+        'args': {
+            'fast_period': 'int',
+            'slow_period': 'int',
+            'smoothing_period': 'int',
+            'price': ('open', 'high', 'low', 'close'),
+            'macd_ma_type': ('sma', 'ema'),
+            'signal_ma_type': ('sma', 'ema'),
+        },
+        'separate': True,
+        'plots': {
+            'macd': 'line',
+            'signal': 'line',
+            'hist': 'hist'
         }
     },
 ]

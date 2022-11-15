@@ -229,7 +229,10 @@ export default class AnalysisForm extends React.Component {
                         {Object.entries(strategy.args).map(([name, dtype]) =>
                             <div key={name}>
                                 <label htmlFor={`${strategy.alias}_${name}`}>
-                                    {name.replace('_', ' ').replace(name[0], name[0].toUpperCase())}
+                                    {(() => {
+                                        let s = name.replace('_', ' ')
+                                        return s.charAt(0).toUpperCase() + s.slice(1)
+                                    })()}
                                 </label>
                                 {dtype_to_field(`${strategy.alias}_${name}`, dtype)}
                             </div>

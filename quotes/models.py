@@ -2,9 +2,10 @@ from django.db import models
 from django.core import validators as val
 import datetime
 import time
+import numpy as np
 import pandas as pd
 import aiohttp
-from . import indicators as ind
+from . import indicators
 from asgiref.sync import sync_to_async
 import asyncio
 from django.utils import timezone
@@ -114,7 +115,7 @@ class StockQuotes(models.Model):  # Economic market instrument information stora
                         try:
                             data = (await resp.json())['chart']['result'][0]  # Selecting only data necessary (no metadata)
                             prices = pd.DataFrame(
-                                index=pd.to_datetime(data['timestamp'], unit="s").normalize(),
+                                index=pd.to_datetime(data['timestamp'], unit='s').normalize(),
                                 data=data['indicators']['quote'][0]
                             ).loc[:, ('open', 'high', 'low', 'close', 'volume')]
                             self.quotes = prices
@@ -154,6 +155,40 @@ class StockQuotes(models.Model):  # Economic market instrument information stora
         quotes = self.quotes  # Quotes serialization to JSON
         quotes.index = quotes.index.strftime('%Y-%m-%d')
         return quotes.rename_axis('date').reset_index().to_dict('records')
+
+    def get_indicator(  # Indicator data wrapper
+            self,
+            alias: str,
+            range_start: str | datetime.datetime | pd.Timestamp | np.datetime64,
+            range_end: str | datetime.datetime | pd.Timestamp | np.datetime64,
+            args: dict
+    ) -> dict:
+        indicator = next(filter(  # Selecting indicator description
+            lambda i: i['alias'] == alias,
+            indicators.choices
+        ))
+        for arg, dtype in indicator['args'].items():
+            match dtype:
+                case 'int':
+                    args[arg] = int(args[arg])
+                case 'float':
+                    args[arg] = float(args[arg])
+                case 'str':
+                    args[arg] = str(args[arg])
+                case 'list[int]':
+                    args[arg] = [int(args.pop(key)) for key in tuple(args.keys()) if arg in key]
+                case 'list[float]':
+                    args[arg] = [float(args.pop(key)) for key in tuple(args.keys()) if arg in key]
+        data = getattr(indicators, alias)(  # Calculating
+            self.quotes, **args
+        )[slice(range_start, range_end)]
+        data.index = data.index.strftime('%Y-%m-%d')  # TimeStamp to datetime-string
+        return {
+            'verbose_name': ' '.join((alias,) + tuple(map(str, args.values()))),
+            'alias': alias,
+            'args': args,
+            'data': data.to_dict('list')
+        }
 
     def __str__(self):
         return self.name

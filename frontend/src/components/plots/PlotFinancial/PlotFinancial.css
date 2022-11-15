@@ -9,82 +9,8 @@
     grid-auto-columns: minmax(min-content, max-content);
 }
 
-.plot_financial_grid .canvas_main {
-    z-index: 0;
-    grid-row-start: 1;
-    grid-row-end: 2;
-    grid-column-start: 2;
-    grid-column-end: 3;
-}
-
-.plot_financial_grid .canvas_volume {
-    z-index: 0;
-    grid-row-start: 2;
-    grid-row-end: 3;
-    grid-column-start: 2;
-    grid-column-end: 3;
-}
-
-.plot_financial_grid .canvas_hit {
-    z-index: 1;
-    grid-row-start: 1;
-    grid-row-end: 3;
-    grid-column-start: 2;
-    grid-column-end: 3;
-}
-
-.plot_financial_grid .canvas_dates {
-    z-index: 0;
-    grid-row-start: 3;
-    grid-row-end: 4;
-    grid-column-start: 2;
-    grid-column-end: 3;
-    border: solid black 1px;
-}
-
-.plot_financial_grid .canvas_dates_tooltip {
-    z-index: 1;
-    grid-row-start: 3;
-    grid-row-end: 4;
-    grid-column-start: 2;
-    grid-column-end: 3;
+.plot_financial_grid .canvas_dates.tooltip {
     cursor: w-resize;
-}
-
-.plot_financial_grid .canvas_value {
-    z-index: 0;
-    grid-row-start: 1;
-    grid-row-end: 2;
-    grid-column-start: 1;
-    grid-column-end: 2;
-    border: solid black 1px;
-    border-bottom: none;
-}
-
-.plot_financial_grid .canvas_value_tooltip {
-    z-index: 1;
-    grid-row-start: 1;
-    grid-row-end: 2;
-    grid-column-start: 1;
-    grid-column-end: 2;
-}
-
-.plot_financial_grid .canvas_volume_value {
-    z-index: 0;
-    grid-row-start: 2;
-    grid-row-end: 3;
-    grid-column-start: 1;
-    grid-column-end: 2;
-    border: solid black 1px;
-    border-top: none;
-}
-
-.plot_financial_grid .canvas_volume_value_tooltip {
-    z-index: 1;
-    grid-row-start: 2;
-    grid-row-end: 3;
-    grid-column-start: 1;
-    grid-column-end: 2;
 }
 
 .plot_financial_tooltips {

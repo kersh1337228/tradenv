@@ -1,8 +1,7 @@
 import React from 'react'
 import ListField from './ListField'
 
-
-export function dtype_to_field(name, dtype, defaultValue = null) {
+function dtype_to_field(name, dtype, defaultValue = null) {
     switch (dtype) {
         case 'int':
             return <input name={name} type={'number'} defaultValue={defaultValue} required/>
@@ -24,3 +23,9 @@ export function dtype_to_field(name, dtype, defaultValue = null) {
             </select>
     }
 }
+
+function capitalize(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1)
+}
+
+export {dtype_to_field, capitalize}
