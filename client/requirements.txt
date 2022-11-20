@@ -1,0 +1,11 @@
+# packages
+react
+react-dom
+react-scripts
+react-router-dom
+typescript
+# types
+@types/node
+@types/react
+@types/react-dom
+@types/react-router-dom
