@@ -1,6 +1,0 @@
-Django
-djangorestframework
-numpy
-pandas
-aiohttp
-daphne
