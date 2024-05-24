@@ -1,7 +1,7 @@
 import React, {FormEvent} from 'react'
 import {Link} from 'react-router-dom'
-import {PortfolioLiteType} from "../../types/portfolio";
-import {getCSRF} from "../../utils/functions";
+import {PortfolioLiteType} from "../../types/portfolio"
+import {ajax} from "../../utils/functions"
 
 interface PortfolioListState {
     portfolios: PortfolioLiteType[]
@@ -24,46 +24,39 @@ export default class PortfolioList extends React.Component<any, PortfolioListSta
     public async portfolio_create(event: FormEvent): Promise<void> {
         event.preventDefault()
         const form = event.target as HTMLFormElement
-        await fetch(
+        await ajax(
             'http://localhost:8000/analysis/api/submit',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRF()
-                },
-                body: JSON.stringify({
-                    name: form._name.value,
-                    balance: form.balance.valueAsNumber
+            'POST',
+            (response: {portfolio: PortfolioLiteType}) => {
+                let portfolios = this.state.portfolios
+                portfolios.unshift(response.portfolio)
+                this.setState({
+                    portfolios: portfolios,
+                    errors: {}
                 })
+            },
+            (response) => {
+                this.setState({
+                    errors: response.responseJSON
+                })
+            },
+            {
+                name: form._name.value,
+                balance: form.balance.valueAsNumber
             }
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {portfolio: PortfolioLiteType}) => {
-            let portfolios = this.state.portfolios
-            portfolios.unshift(response.portfolio)
-            this.setState({
-                portfolios: portfolios,
-                errors: {}
-            })
-        }).catch((response) => {
-            this.setState({
-                errors: response.responseJSON
-            })
-        })
+        )
     }
     public async componentDidMount(): Promise<void> {
-        await fetch(
+        await ajax(
             'http://localhost:8000/portfolio/api/list',
-            {method: 'GET'}
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {portfolios: PortfolioLiteType[]}) => {
-            this.setState({
-                portfolios: response.portfolios,
-                loading: false
-            })
-        })
+            'GET',
+            (response: {portfolios: PortfolioLiteType[]}) => {
+                this.setState({
+                    portfolios: response.portfolios,
+                    loading: false
+                })
+            }
+        )
     }
     public render(): React.ReactElement {
         let portfolio_list = this.state.portfolios.length ?

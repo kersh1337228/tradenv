@@ -1,6 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {StockInstanceType} from "../../types/quotes";
+import {bind} from "../../utils/decorators";
 
 interface PortfolioStockDetailProps {
     stock: StockInstanceType
@@ -30,15 +31,17 @@ export default class PortfolioStockDetail extends React.Component<
         this.priorityRef = React.createRef()
         this.amountRef = React.createRef()
     }
-    alter() {
+    @bind
+    public alter(): void {
         this.props.alter(
             this,
             this.priorityRef.current?.valueAsNumber,
             this.amountRef.current?.valueAsNumber
         )
     }
-    remove() {
-        if (confirm(
+    @bind
+    public remove(): void {
+        if (window.confirm(
             `Do you really want to remove the ${
                 this.props.stock.quotes.symbol
             } stock from this portfolio?`
@@ -105,14 +108,26 @@ export default class PortfolioStockDetail extends React.Component<
                 <td className="quotes_list_detail_last_update">
                     {this.props.stock.quotes.last_timestamp}
                 </td>
-                <td className="portfolio_stock_detail_edit_menu">
-                    <button onClick={() => {
-                        this.setState({
-                            config: false
-                        })}}>Cancel
-                    </button>
-                    <button onClick={this.alter}>Confirm</button>
-                </td>
+                {this.state.config ?
+                    <td className="portfolio_stock_detail_edit_menu">
+                        <button onClick={() => {
+                            this.setState({
+                                config: false
+                            })}}>Cancel
+                        </button>
+                        <button onClick={this.alter}>Confirm</button>
+                    </td> :
+                    <td className="portfolio_stock_detail_edit_menu">
+                        <button onClick={() => {this.setState({
+                            config: true
+                        })}}
+                            style={{cursor: 'pointer'}}>Alter
+                        </button>
+                        <button onClick={this.remove}
+                            style={{color: 'red', cursor: 'pointer'}}>Remove
+                        </button>
+                    </td>
+                }
             </tr>
         )
     }

@@ -31,7 +31,6 @@
     grid-row-end: 3;
     grid-column-start: 2;
     grid-column-end: 3;
-    border: solid black 1px;
 }
 
 .plot_date_value_grid .canvas_dates_tooltip {
@@ -49,7 +48,6 @@
     grid-row-end: 2;
     grid-column-start: 1;
     grid-column-end: 2;
-    border: solid black 1px;
 }
 
 .plot_date_value_grid .canvas_value_tooltip {

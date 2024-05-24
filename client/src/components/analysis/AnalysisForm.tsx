@@ -1,9 +1,8 @@
 import React from 'react'
-import {ajax, dtype_to_field} from "../../utils/functions";
-import {PortfolioLiteType} from "../../types/portfolio";
-import {StrategyType} from "../../types/strategy";
-import {bind} from "../../utils/decorators";
-import {getCSRF} from "../../utils/functions";
+import {ajax, dtype_to_field} from "../../utils/functions"
+import {PortfolioLiteType} from "../../types/portfolio"
+import {StrategyType} from "../../types/strategy"
+import {bind} from "../../utils/decorators"
 
 interface AnalysisFormState {
     portfolios: PortfolioLiteType[],

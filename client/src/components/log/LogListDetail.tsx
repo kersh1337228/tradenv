@@ -1,6 +1,7 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
 import {LogType} from '../../types/log'
+import {ajax} from "../../utils/functions";
 
 interface LogListDetailProps {
     log: LogType,
@@ -12,13 +13,14 @@ export default class LogListDetail extends React.Component<LogListDetailProps, a
         super(props)
     }
     public async remove(): Promise<void> {
-        if (confirm(`Do you really want to delete the log?`)) {
-            await fetch(
+        if (window.confirm(`Do you really want to delete the log?`)) {
+            await ajax(
                 `http://localhost:8000/log/api/delete/${this.props.log.slug}`,
-                {method: 'DELETE'}
-            ).then(() => {
-                this.props.remove(this.props.log.slug)
-            })
+                'DELETE',
+                () => {
+                    this.props.remove(this.props.log.slug)
+                }
+            )
         }
     }
     public render(): React.ReactElement {

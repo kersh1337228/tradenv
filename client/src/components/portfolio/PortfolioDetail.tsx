@@ -5,7 +5,7 @@ import PortfolioStockDetail from "./PortfolioStockDetail"
 import {LogType} from "../../types/log";
 import {PortfolioType} from "../../types/portfolio";
 import {StockQuotesLiteType} from "../../types/quotes";
-import {formSerialize, getCSRF} from "../../utils/functions";
+import {ajax, formSerialize, getCSRF} from "../../utils/functions";
 
 interface PortfolioDetailState {
     portfolio: PortfolioType | null
@@ -40,188 +40,150 @@ export default class PortfolioDetail extends React.Component<any, PortfolioDetai
         this.searchRef = React.createRef()
     }
     public async portfolio_delete(): Promise<void> {
-        if (confirm('Do you really want to delete the portfolio?')) {
-            await fetch(
+        if (window.confirm('Do you really want to delete the portfolio?')) {
+            await ajax(
                 `http://localhost:8000/portfolio/api/delete/${
                     this.state.portfolio?.slug
                 }`,
-                {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRF()
-                    }
-                }
-            ).then(
+                'DELETE',
                 () => window.location.href = '/portfolio/list'
             )
         }
     }
     public async portfolio_update(event: React.FormEvent): Promise<void> {
         event.preventDefault()
-        await fetch(
+        await ajax(
             `http://localhost:8000/portfolio/api/update/${
                 this.state.portfolio?.slug
             }`,
-            {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRF()
-                },
-                body: formSerialize(event.target as HTMLFormElement)
-            }
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {portfolio: PortfolioType}) => {
-            this.setState({
-                portfolio: response.portfolio,
-                errors: {},
-                config: false,
-            })
-        }).catch((response) => {
-            this.setState({
-                errors: response.responseJSON
-            })
-        })
+            'PATCH',
+            (response: {portfolio: PortfolioType}) => {
+                this.setState({
+                    portfolio: response.portfolio,
+                    errors: {},
+                    config: false,
+                })
+            },
+            (response) => {
+                this.setState({
+                    errors: response.responseJSON
+                })
+            },
+            formSerialize(event.target as HTMLFormElement)
+        )
     }
     public async stocks_search(event: React.ChangeEvent): Promise<void> {
         const value = (event.target as HTMLInputElement).value
         if (!value) {
             this.setState({quotes: []})
         } else {
-            await fetch(
-                `http://localhost:8000/quotes/api/list`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        query: value
-                    }),
-                }
-            ).then(
-                (response: Response) => response.json()
-            ).then((response: {query: string, quotes: StockQuotesLiteType[]}) => {
-                if (response.query === value) {
+            await ajax(
+                'http://localhost:8000/quotes/api/list',
+                'GET',
+                (response: {query: string, quotes: StockQuotesLiteType[]}) => {
+                    if (response.query === value) {
+                        this.setState({
+                            quotes: response.quotes
+                        })
+                    }
+                },
+                (response) => {
                     this.setState({
-                        quotes: response.quotes
+                        errors: response.responseJSON
                     })
-                }
-            }).catch((response) => {
-                this.setState({
-                    errors: response.responseJSON
-                })
-            })
+                },
+                {query: value}
+            )
         }
     }
     public async stocks_add(symbol: string): Promise<void> {
-        await fetch(
+        await ajax(
             `http://localhost:8000/portfolio/api/detail/${
                 this.state.portfolio?.slug
             }/stocks/add`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRF()
-                },
-                body: JSON.stringify({symbol}),
-            }
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {portfolio: PortfolioType}) => {
-            this.setState({
-                portfolio: response.portfolio
-            })
-        }).catch((response) => {
-            this.setState({
-                errors: response.responseJSON
-            })
-        })
+            'PUT',
+            (response: {portfolio: PortfolioType}) => {
+                this.setState({
+                    portfolio: response.portfolio
+                })
+            },
+            (response) => {
+                this.setState({
+                    errors: response.responseJSON
+                })
+            },
+            {symbol}
+        )
     }
     public async stocks_alter(
         stock: PortfolioStockDetail,
         priority: number,
         amount: number
     ): Promise<void> {
-        await fetch(
+        await ajax(
             `http://localhost:8000/portfolio/api/detail/${
                 this.state.portfolio?.slug
             }/stocks/alter`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRF()
-                },
-                body: JSON.stringify({
-                    symbol: stock.props.stock.quotes.symbol,
-                    priority: priority,
-                    amount: amount
+            'PUT',
+            (response: {portfolio: PortfolioType}) => {
+                this.setState({
+                    portfolio: response.portfolio
+                }, () => {
+                    stock.setState({config: false})
                 })
+            },
+            (response) => {
+                stock.setState({
+                    config: true,
+                    errors: response.responseJSON
+                })
+            },
+            {
+                symbol: stock.props.stock.quotes.symbol,
+                priority: priority,
+                amount: amount
             }
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {portfolio: PortfolioType}) => {
-            this.setState({
-                portfolio: response.portfolio
-            }, () => {
-                stock.setState({config: false})
-            })
-        }).catch((response) => {
-            stock.setState({
-                config: true,
-                errors: response.responseJSON
-            })
-        })
+        )
     }
     public async stocks_remove(symbol: string): Promise<void> {
-        await fetch(
+        await ajax(
             `http://localhost:8000/portfolio/api/detail/${
                 this.state.portfolio?.slug
             }/stocks/remove`,
-            {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRF()
-                },
-                body: JSON.stringify({symbol: symbol})
-            }
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {portfolio: PortfolioType}) => {
-            this.setState({
-                portfolio: response.portfolio,
-            })
-        }).catch((response) => {
-            this.setState({
-                errors: response.responseJSON
-            })
-        })
+            'PUT',
+            (response: {portfolio: PortfolioType}) => {
+                this.setState({
+                    portfolio: response.portfolio,
+                })
+            },
+            (response) => {
+                this.setState({
+                    errors: response.responseJSON
+                })
+            },
+            {symbol}
+        )
     }
     public async componentDidMount(): Promise<void> {
         const slug = window.location.href.match(
             /\/portfolio\/detail\/(?<slug>[\w]+)/
         )?.groups?.slug
-        await fetch(
+        await ajax(
             `http://localhost:8000/portfolio/api/detail/${slug}`,
-            {method: 'GET'}
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {portfolio: PortfolioType, logs: LogType[]}) => {
-            this.setState({
-                portfolio: response.portfolio,
-                logs: response.logs,
-                loading: false
-            })
-        }).catch((response) => {
-            if (response.status === 404) {
-                window.location.href = '/notfound'
+            'GET',
+            (response: {portfolio: PortfolioType, logs: LogType[]}) => {
+                this.setState({
+                    portfolio: response.portfolio,
+                    logs: response.logs,
+                    loading: false
+                })
+            },
+            (response) => {
+                if (response.status === 404) {
+                    window.location.href = '/notfound'
+                }
             }
-        })
+        )
     }
     render() {
         try {

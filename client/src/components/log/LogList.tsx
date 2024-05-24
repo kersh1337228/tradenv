@@ -2,6 +2,7 @@ import React from 'react'
 import LogListDetail from './LogListDetail'
 import {LogType} from "../../types/log";
 import {bind} from "../../utils/decorators";
+import {ajax} from "../../utils/functions";
 
 
 export default class LogList extends React.Component<any, {logs: LogType[]}> {
@@ -20,16 +21,15 @@ export default class LogList extends React.Component<any, {logs: LogType[]}> {
         })
     }
     async componentDidMount(): Promise<void> {
-        await fetch(
-            `http://localhost:8000/log/api/list`,
-            {method: 'GET'}
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {logs: LogType[]}) => {
-            this.setState({
-                logs: response.logs
-            })
-        })
+        await ajax(
+            'http://localhost:8000/log/api/list',
+            'GET',
+            (response: {logs: LogType[]}) => {
+                this.setState({
+                    logs: response.logs
+                })
+            }
+        )
     }
     public render(): React.ReactElement {
         return(

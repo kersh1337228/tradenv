@@ -3,6 +3,7 @@ import PlotFinancial from "../plots/PlotFinancial/PlotFinancial"
 import PlotDateValue from "../plots/PlotDateValue/PlotDateValue"
 import './LogDetail.css'
 import {LogType} from "../../types/log"
+import {ajax} from "../../utils/functions";
 
 interface LogDetailState {
     log: LogType | null,
@@ -23,16 +24,15 @@ export default class LogDetail extends React.Component<any, LogDetailState> {
         const slug = window.location.href.match(
             /\/log\/detail\/(?<slug>[\w]+)/
         )?.groups?.slug
-        await fetch(
+        await ajax(
             `http://localhost:8000/log/api/detail/${slug}`,
-            {method: 'GET'}
-        ).then(
-            (response: Response) => response.json()
-        ).then((response: {log: LogType}) => {
-            this.setState({
-                log: response.log
-            })
-        })
+            'GET',
+            (response: {log: LogType}) => {
+                this.setState({
+                    log: response.log
+                })
+            }
+        )
     }
     public render(): React.ReactElement {
         if (this.state.log) {

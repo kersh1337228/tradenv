@@ -266,7 +266,12 @@ export class Figure {  // Figure class containing main plot component data
                 this.grid.horizontal.amount + 1
             ) * value_per_pixel
             this.value_scale.context.save()
-            this.value_scale.context.font = '10px Arial'
+            this.value_scale.context.font = '13px Arial'
+
+            let million = this.grid.horizontal.amount * step +
+                this.min_value - this.padding.bottom *
+                this.height * value_per_pixel >= 10 ** 6
+
             for (let i = 1; i <= this.grid.horizontal.amount; ++i) {
                 this.value_scale.context.beginPath()
                 const y = (
@@ -282,12 +287,15 @@ export class Figure {  // Figure class containing main plot component data
                 this.value_scale.context.closePath()
                 // Drawing value
                 const value = i * step + this.min_value - this.padding.bottom * this.height * value_per_pixel
-                let text: number | string = Math.round((value + Number.EPSILON) * 100) / 100
-                if (value >= 10 ** 6) {
-                    text = `${Math.round((value / 10 ** 6 + Number.EPSILON) * 100) / 100}M`
-                } else if (value >= 10 ** 9) {
-                    text = `${Math.round((value / 10 ** 9 + Number.EPSILON) * 100) / 100}B`
-                }
+                let text: number = Math.round((value + Number.EPSILON) * 100) / 100
+
+                text = million ? Math.round((value / 10 ** 6 + Number.EPSILON) * 100) / 100 : text
+
+                // if (value >= 10 ** 6) {
+                //     text = `${Math.round((value / 10 ** 6 + Number.EPSILON) * 100) / 100}M`
+                // } else if (value >= 10 ** 9) {
+                //     text = `${Math.round((value / 10 ** 9 + Number.EPSILON) * 100) / 100}B`
+                // }
                 this.value_scale.context.fillText(
                     String(text), 48 * 0.05, y + 4
                 )
@@ -308,7 +316,7 @@ export class Figure {  // Figure class containing main plot component data
                 0, y - grid_step / 4,
                 48, grid_step / 2
             )
-            this.value_scale.tooltip.context.font = '10px Arial'
+            this.value_scale.tooltip.context.font = '13px Arial'
             this.value_scale.tooltip.context.fillStyle = '#ffffff'
             // Value tooltip
             let value: number | string = Math.round(
@@ -434,7 +442,7 @@ export class DatesScale extends Figure {
             )
             let step = Math.ceil(this.observed_data.length * 0.1)
             this.context.save()
-            this.context.font = '10px Arial'
+            this.context.font = '13px Arial'
             for (let i = step; i <= this.observed_data.length - step * 0.5; i += step) {
                 this.context.beginPath()
                 this.context.moveTo(
@@ -448,8 +456,8 @@ export class DatesScale extends Figure {
                 this.context.closePath()
                 this.context.fillText(
                     this.observed_data[i],
-                    (2 * i + 1.1) * this.scale.width / 2 - 25,
-                    this.height * 0.3
+                    (2 * i + 1.1) * this.scale.width / 2 - 30,
+                    this.height * 0.35
                 )
             }
             this.context.restore()
@@ -467,7 +475,7 @@ export class DatesScale extends Figure {
                 (2 * i + 1.1) * segment_width / 2 - 30, 0,
                 60, this.height * 0.4
             )
-            this.tooltip.context.font = '10px Arial'
+            this.tooltip.context.font = '13px Arial'
             this.tooltip.context.fillStyle = '#ffffff'
             this.tooltip.context.fillText(
                 this.observed_data[i],

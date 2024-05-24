@@ -267,7 +267,7 @@ export default class PlotDateValue extends React.Component<
             }
         }
         this.max_data = 1000  // Max data points on chart simultaneously
-        this.font = '10px Arial'
+        this.font = '13px Arial'
         this.colors = [  // Lines colors
             '#d14d00',
             '#000fca',
@@ -416,8 +416,8 @@ export default class PlotDateValue extends React.Component<
                 this.state.figures.dates.context.closePath()
                 this.state.figures.dates.context.fillText(
                     this.state.meta_data.data[0][i].date,
-                    i * this.state.figures.main.scale.width - 25,
-                    this.state.figures.dates.get_height() * (this.state.figures.dates.padding.top + 0.3)
+                    i * this.state.figures.main.scale.width - 30,
+                    this.state.figures.dates.get_height() * (this.state.figures.dates.padding.top + 0.35)
                 )
             }
         }
@@ -448,7 +448,7 @@ export default class PlotDateValue extends React.Component<
                     `${Math.round((
                         i / this.state.meta_data.data[0][0].value *
                         100 + Number.EPSILON
-                    ) * 100) / 100}%`,
+                    ) * 100) / 100}`,
                     this.state.figures.value.get_width() * 0.05,
                     y + 4
                 )
