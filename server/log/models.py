@@ -28,9 +28,6 @@ class MultiIndexDataFrameField(models.JSONField):
             super().to_python(value)
         ).fillna(0.)
 
-    def get_prep_value(self, value: pd.DataFrame):
-        return super().get_prep_value(value)
-
 
 class Log(models.Model):  # Analytical log storing full strategy application result
     range_start = models.DateTimeField()
@@ -84,7 +81,7 @@ class Log(models.Model):  # Analytical log storing full strategy application res
         return logs.to_dict('records')
 
     @async_to_sync
-    async def get_stocks_quotes(self):
+    async def get_stocks_quotes(self) -> dict:
         return await self.portfolio.get_all_quotes(
             self.range_start, self.range_end, 'dict'
         )

@@ -20,10 +20,10 @@ class PortfolioAPIView(AsyncAPIView):
             portfolio = await Portfolio.objects.aget(
                 slug=kwargs.get('slug')
             )
-            async with aiohttp.ClientSession() as session:
-                async with asyncio.TaskGroup() as tg:
-                    async for q in portfolio.stocks.select_related('quotes'):
-                        tg.create_task(q.quotes.update_quotes(session))
+            # async with aiohttp.ClientSession() as session:
+            #     async with asyncio.TaskGroup() as tg:
+            #         async for q in portfolio.stocks.select_related('quotes'):
+            #             tg.create_task(q.quotes.update_quotes(session))
             return Response(
                 data={
                     'portfolio': await sync_to_async(

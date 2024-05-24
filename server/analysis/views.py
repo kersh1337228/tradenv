@@ -62,9 +62,9 @@ class AnalysisAPIView(AsyncAPIView):
                 slug=request.data.get('portfolio')
             )
         )
-        with multiprocessing.Pool(min((
+        with multiprocessing.Pool(min(
             len(strategies), multiprocessing.cpu_count()
-        ))) as pool:
+        )) as pool:
             results = (
                 pool.apply_async(
                     getattr(strats, sname),

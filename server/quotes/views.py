@@ -17,8 +17,8 @@ class QuotesAPIView(AsyncAPIView):
         quotes = await StockQuotes.objects.aget(
             symbol=kwargs.get('symbol')
         )
-        async with aiohttp.ClientSession() as session:
-            await quotes.update_quotes(session)
+        # async with aiohttp.ClientSession() as session:
+        #     await quotes.update_quotes(session)
         return Response(
             data={
                 'quotes': StockQuotesSerializer(quotes).data
@@ -40,10 +40,10 @@ class QuotesListAPIView(AsyncAPIView):
                  )[:limit] if query else
                  StockQuotes.objects.all()[(page - 1) * limit:page * limit]
             )
-            async with aiohttp.ClientSession() as session:  # Refreshing stocks quotes
-                async with asyncio.TaskGroup() as tg:
-                    async for q in quotes:
-                        tg.create_task(q.update_quotes(session))
+            # async with aiohttp.ClientSession() as session:  # Refreshing stocks quotes
+            #     async with asyncio.TaskGroup() as tg:
+            #         async for q in quotes:
+            #             tg.create_task(q.update_quotes(session))
             return Response(
                 data={
                     'quotes': StockQuotesSerializerLite(quotes, many=True).data,

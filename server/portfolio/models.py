@@ -131,7 +131,7 @@ class Portfolio(models.Model):
             range_end: datetime.date | pd.Timestamp | np.datetime64 | str = None,
             _format: Literal['dataframe', 'dict'] = 'dataframe',  # Return format
             _fill: bool = False  # Fill days with no data
-    ) -> pd.DataFrame:
+    ) -> pd.DataFrame | dict:
         if _fill:  # Creating date range to fill blank days
             if not range_start or not range_end:
                 quotes_dates = await self.get_quotes_dates()
@@ -195,7 +195,7 @@ class Portfolio(models.Model):
             self,
             range_start: datetime.date | pd.Timestamp | np.datetime64 | str = None,
             range_end: datetime.date | pd.Timestamp | np.datetime64 | str = None
-    ):
+    ) -> dict:
         result = 0.
         async for stock in self.stocks.select_related('quotes'):
             first, last = stock.quotes.quotes.loc[
