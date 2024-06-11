@@ -1,0 +1,68 @@
+version: '3.9'
+
+services:
+  django:
+    container_name: django
+    build:
+      context: ./django
+    stdin_open: true
+    restart: always
+    volumes:
+      - ./next/public/static:/var/www/static
+      - ./next/public/media:/var/www/media
+    env_file: ./django/.env
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      postgres:
+        condition: service_started
+
+  next:
+    container_name: next
+    build: 
+      context: ./next
+    stdin_open: true
+    restart: always
+    volumes:
+      - ./next/public/static:/app/public/static
+      - ./next/public/media:/app/public/media
+    networks:
+      - frontend
+    depends_on:
+      django:
+        condition: service_started
+
+  postgres:
+    container_name: postgres
+    build: 
+      context: ./postgres
+    restart: always
+    volumes:
+      - ./postgres/db:/var/lib/postgresql/data
+    env_file: ./postgres/.env
+    networks:
+      - backend
+
+  nginx:
+    container_name: nginx
+    build:
+      context: ./nginx
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    networks:
+      - frontend
+    depends_on:
+      next:
+        condition: service_started
+
+networks:
+  backend:
+    name: backend
+    driver: bridge
+  frontend:
+    name: frontend
+    driver: bridge
