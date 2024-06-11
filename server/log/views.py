@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from log.models import Log
 from log.serializers import LogSerializer
 from asgiref.sync import async_to_sync, sync_to_async
-from asyncAPI.views import AsyncAPIView
+from src.async_api.views import AsyncAPIView
 
 
 class LogListAPIView(AsyncAPIView):

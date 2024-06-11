@@ -8,8 +8,8 @@ from quotes.models import StockQuotes
 from quotes.serializers import StockQuotesSerializer, StockQuotesSerializerLite
 from quotes.utils import paginate, parse_quotes_names
 from quotes import indicators
-from asyncAPI.views import AsyncAPIView
-from asyncAPI import decorators
+from src.async_api.views import AsyncAPIView
+from src.async_api import decorators
 
 
 class QuotesAPIView(AsyncAPIView):

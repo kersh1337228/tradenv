@@ -9,7 +9,7 @@ from quotes.models import StockInstance, StockQuotes
 from asgiref.sync import async_to_sync, sync_to_async
 import aiohttp
 import asyncio
-from asyncAPI.views import AsyncAPIView
+from src.async_api.views import AsyncAPIView
 
 
 class PortfolioAPIView(AsyncAPIView):

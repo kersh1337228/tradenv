@@ -1,4 +1,4 @@
-from asyncAPI.views import AsyncAPIView
+from src.async_api.views import AsyncAPIView
 import types
 
 

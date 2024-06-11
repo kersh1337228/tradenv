@@ -8,7 +8,7 @@ from portfolio.serializers import PortfolioSerializer
 from asgiref.sync import async_to_sync, sync_to_async
 import strategy.strategies as strats
 import multiprocessing
-from asyncAPI.views import AsyncAPIView
+from src.async_api.views import AsyncAPIView
 
 
 class AnalysisAPIView(AsyncAPIView):
