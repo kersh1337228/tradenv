@@ -1,0 +1,78 @@
+.footer {
+    position: page;
+    bottom: 0;
+    left: 0;
+    background: #ededee;
+    color: black;
+    box-sizing: border-box;
+    height: max-content;
+}
+
+.inner {
+    padding: 32px 512px;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.icons {
+    margin-left: -8px;
+}
+
+.icons a svg {
+    color: black;
+    opacity: 0.7;
+}
+
+.author {
+    justify-self: flex-end;
+    color: black;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.1s;
+}
+
+.author:hover {
+    opacity: 1;
+}
+
+.meta {
+    margin-top: 16px;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.ellipticButton {
+    padding: 8px;
+    border-width: 0;
+    border-radius: 32px;
+    background: transparent;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity, background 0.1s;
+}
+
+.ellipticButton:hover {
+    background: rgba(127, 127, 127, 0.2);
+    opacity: 1;
+}
+
+@media (max-width: 1500px) {
+    .inner {
+        padding: 32px 384px;
+    }
+}
+
+@media (max-width: 800px) {
+    .inner {
+        padding: 32px 16px;
+    }
+}

@@ -1,0 +1,126 @@
+.header {
+    width: 100%;
+    color: black;
+    --header-height: 48px;
+    --header-color: #ebebeb;
+}
+
+.placeholder {
+    background: var(--header-color);
+    z-index: 1;
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--header-height);
+    box-sizing: border-box;
+}
+
+.inner {
+    position: fixed;
+    top: 0;
+    z-index: 2;
+    background: rgb(235, 235, 237, 0.8);
+    backdrop-filter: saturate(180%) blur(16px);
+
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: var(--header-height);
+    align-content: normal;
+    justify-content: center;
+    align-items: center;
+    min-width: max-content;
+}
+
+.mainMenu {
+    display: flex;
+    flex-direction: row;
+    flex-basis: auto;
+    align-items: stretch;
+    max-width: 100%;
+}
+
+.menuButton {
+    display: none;
+}
+
+@media (max-width: 500px) {
+    .mainMenu {
+        display: none;
+    }
+
+    .additionalMenu {
+        display: block !important;
+    }
+
+    .menuButton {
+        display: block;
+    }
+}
+
+.linkWrapper {
+    display: table;
+}
+
+.link {
+    /*color: white;*/
+
+    display: table-cell;
+    vertical-align: middle;
+
+    margin: 0;
+    padding: 0 16px;
+    border: none;
+    outline: transparent;
+    white-space: nowrap;
+    background: none;
+    opacity: 0.6;
+    transition: opacity 0.1s;
+}
+
+.link:hover {
+    opacity: 1;
+}
+
+a.link {
+    cursor: pointer;
+}
+
+span.link {
+    pointer-events: none;
+    user-select: none;
+    opacity: 1 !important;
+}
+
+.additionalMenu {
+    display: none;
+    flex-direction: row;
+    flex-basis: auto;
+    align-items: stretch;
+    max-width: 100%;
+    opacity: 0.7;
+    transition: opacity 0.1s;
+}
+
+.additionalMenu:hover {
+    opacity: 1;
+}
+
+.additionalMenu h1 {
+    cursor: pointer;
+}
+
+.additionalMenu ul {
+    top: var(--header-height);
+    margin-left: -30px;
+    background: var(--header-color);
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.additionalMenu ul li {
+    padding: 8px 0;
+}

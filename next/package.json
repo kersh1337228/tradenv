@@ -1,0 +1,34 @@
+{
+    "name": "tradenv",
+    "version": "0.0",
+    "description": "tradenv client",
+    "author": {
+        "name": "Anton Cherevko",
+        "email": "antonycherevko@gmail.com",
+        "url": "https://github.com/kersh1337228"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/kersh1337228/tradenv"
+    },
+    "homepage": "https://github.com/kersh1337228/tradenv",
+    "license": "MIT",
+    "private": false,
+    "dependencies": {
+        "next": "^14.2.3",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.13.0",
+        "@types/react": "^18.3.3",
+        "@types/react-dom": "^18.3.0",
+        "typescript": "^5.4.5"
+    },
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start"
+    },
+    "keywords": []
+}

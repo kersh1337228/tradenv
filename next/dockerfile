@@ -1,0 +1,14 @@
+FROM node:latest
+
+WORKDIR /tradenv
+
+ENV PATH /tradenv/node_modules/.bin:$PATH
+
+COPY package.json .
+RUN npm install
+
+COPY . .
+RUN npx next telemetry disable
+RUN npm run build
+
+CMD ["npm", "run", "start"]

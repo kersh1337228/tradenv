@@ -1,0 +1,32 @@
+.section,
+.welcome {
+    padding: 64px 256px;
+}
+
+.welcome {
+    /*color: white;*/
+    background: linear-gradient(90deg, #53e9b5, 60%, #da2c4d);
+}
+
+.sectionHeader {
+    font-size: 36px;
+    padding-bottom: 32px;
+}
+
+.sectionContent {
+    font-size: 24px;
+}
+
+@media (max-width: 1400px) {
+    .section,
+    .welcome {
+        padding: 64px 128px;
+    }
+}
+
+@media (max-width: 900px) {
+    .section,
+    .welcome {
+        padding: 32px;
+    }
+}
