@@ -13,7 +13,7 @@ class LogPartialSerializer(AsyncModelSerializer):
         source='portfolio.name',
         read_only=True
     )
-
+    # TODO: show more useful log-data
     @staticmethod
     def get_strategies(
             log: models.Log
