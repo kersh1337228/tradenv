@@ -9,7 +9,7 @@ type JSONResponse = {
     bodyUsed: boolean;
 };
 
-type Quotes = {
+type OHLCV = {
     timestamp: string;
     open: number;
     high: number;
@@ -18,24 +18,43 @@ type Quotes = {
     volume: number;
 };
 
-type StockPartial = {
-    symbol: string;
-    name: string;
-    type: string;
-    country: string;
-    exchange: string;
-    last_updated: string;
-    last_timestamp: string;
-    tendency: {
-        change: number;
-        change_percent: number;
-        quotes: QuotesType;
-    };
+type PaginationType = {
+    page_numbers: number[];
+    no_further: boolean;
+    no_back: boolean;
+    current_page: number;
 };
 
-interface Stock extends StockPartial {
-    quotes: Quotes[];
-}
+type StockType = 'stock' | 'etf' | 'fund' | 'futures'
+    | 'forex' | 'index' | 'bond' | 'option' | 'crypto';
+
+type Stock = {
+    symbol: string;
+    name?: string;
+    type: StockType;
+    exchange?: string;
+    exchange_name?: string;
+    timezone: string;
+    country: string;
+    currency: string;
+    sector?: string;
+    industry?: string;
+    quotes: {
+        timeframe: string;
+        update_time: string;
+    }[];
+};
+
+type Quotes = {
+    ohlcv: OHLCV[];
+    timeframe: string;
+    update_time: string;
+    tendency: {
+        abs: number;
+        rel: number;
+        ohlcv: OHLCV;
+    }
+};
 
 type StockInstance = {
     stock: StockPartial;

@@ -13,17 +13,17 @@ const menu = [{
     name: 'Home',
     href: '/'
 }, {
-    name: 'Analysis',
-    href: '/analysis'
-}, {
-    name: 'Quotes',
-    href: '/quotes'
+    name: 'Stocks',
+    href: '/stocks'
 }, {
     name: 'Portfolios',
-    href: '/portfolio'
+    href: '/portfolios'
+}, {
+    name: 'Strategies',
+    href: '/strategies'
 }, {
     name: 'Logs',
-    href: '/log'
+    href: '/logs'
 }];
 
 export default function Header() {

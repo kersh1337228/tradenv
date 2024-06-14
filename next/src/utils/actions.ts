@@ -7,13 +7,13 @@ import {
     notFound
 } from 'next/navigation';
 
-const serverURL = process.env.serverURL ?? 'http://0.0.0.0:8000';
+const serverURL = process.env.SERVER_URL ?? 'http://0.0.0.0:8000';
 
 export async function serverRequest(
     url: string,
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'TRACE' | 'OPTIONS',
-    data: Record<string, any> | FormData = {},
     options: Record<string, any> = {},
+    data: Record<string, any> | FormData = {},
     headers: Record<string, string> = {}
 ): Promise<JSONResponse> {
     const cookieStore = cookies();

@@ -8,7 +8,7 @@ import {
     serverRequest
 } from '../../utils/actions';
 
-export default function AnalysisForm(
+export default function TestForm(
     {
         portfolios
     }: {

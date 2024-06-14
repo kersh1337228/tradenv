@@ -12,7 +12,7 @@ export default function Select(
     {
         name,
         errors,
-        label = false,
+        label = '',
         required = true,
         defaultValue,
         inputRef,
@@ -21,7 +21,7 @@ export default function Select(
     }: {
         name: string;
         errors?: string[];
-        label?: boolean;
+        label?: string;
         required?: boolean;
         defaultValue?: string;
         inputRef?: RefObject<HTMLSelectElement>;
@@ -32,20 +32,12 @@ export default function Select(
     return <div
         className={styles.field}
     >
-        {
-            label ? <label
-                htmlFor={name}
-            >
-                {name.charAt(0).toUpperCase() + name.slice(1)}
-            </label> : null
-        }
-        <ul
-            className={styles.errors}
-        >
+        {label ? <label htmlFor={name}>
+            {label}
+        </label> : null}
+        <ul className={styles.errors}>
             {errors?.map((error, key) =>
-                <li
-                    key={key}
-                >
+                <li key={key}>
                     {error}
                 </li>
             )}

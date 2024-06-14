@@ -1,11 +1,5 @@
-.section,
-.welcome {
+.section {
     padding: 64px 256px;
-}
-
-.welcome {
-    /*color: white;*/
-    background: linear-gradient(90deg, #53e9b5, 60%, #da2c4d);
 }
 
 .sectionHeader {
@@ -17,16 +11,27 @@
     font-size: 24px;
 }
 
+.section div,
+.section ul {
+    font-size: 16pt;
+}
+
+.section ul li {
+    padding: 8px 0;
+}
+
+.section a {
+    font-weight: bold;
+}
+
 @media (max-width: 1400px) {
-    .section,
-    .welcome {
+    .section {
         padding: 64px 128px;
     }
 }
 
 @media (max-width: 900px) {
-    .section,
-    .welcome {
+    .section {
         padding: 32px;
     }
 }

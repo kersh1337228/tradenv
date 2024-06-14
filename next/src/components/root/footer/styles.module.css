@@ -2,8 +2,9 @@
     position: page;
     bottom: 0;
     left: 0;
-    background: #ededee;
-    color: black;
+    /*background: #ededee;*/
+    background: black;
+    color: white;
     box-sizing: border-box;
     height: max-content;
 }
@@ -12,7 +13,8 @@
     padding: 32px 512px;
 }
 
-.row {
+.top,
+.bottom {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -20,18 +22,26 @@
     gap: 16px;
 }
 
+.top {
+    padding-bottom: 8px;
+    border-bottom: 1px solid #999999;
+}
+
+.bottom {
+
+}
+
 .icons {
     margin-left: -8px;
 }
 
 .icons a svg {
-    color: black;
+    color: white;
     opacity: 0.7;
 }
 
 .author {
     justify-self: flex-end;
-    color: black;
     cursor: pointer;
     opacity: 0.6;
     transition: opacity 0.1s;

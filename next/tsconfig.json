@@ -22,7 +22,8 @@
                 "name": "next"
             }
         ],
-        "experimentalDecorators": true
+        "experimentalDecorators": true,
+        "baseUrl": "."
     },
     "include": [
         "next-env.d.ts",

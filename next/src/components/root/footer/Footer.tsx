@@ -11,7 +11,7 @@ export default async function Footer() {
             className={styles.inner}
         >
             <div
-                className={styles.row}
+                className={styles.top}
             >
                 <span
                     className={styles.icons}
@@ -30,13 +30,13 @@ export default async function Footer() {
                     </a>
                 </span>
                 <Link
-                    href={'/about#author'}
+                    href={'/#author'}
                     className={styles.author}
                 >
                     About author
                 </Link>
             </div>
-            <div className={styles.row}>
+            <div className={styles.bottom}>
                 <span
                     className={styles.meta}
                 >
