@@ -9,7 +9,6 @@ from django.db import models
 import numpy as np
 import pandas as pd
 import aiohttp
-from django.http import Http404
 from src.utils.contstants import http_headers
 from . import indicators
 from src.utils.fields import DataFrameField
@@ -105,7 +104,7 @@ class Quotes(models.Model):
                 now = datetime.datetime.now()
                 async with aiohttp.ClientSession() as session:
                     async with session.get(
-                            url=f'https://query1.finance.yahoo.com/v8/finance/chart/{self.symbol}',
+                            url=f'https://query1.finance.yahoo.com/v8/finance/chart/{self.stock_id}',
                             params={
                                 'period1': int((now - timeframe_delta_max.get(self.timeframe)).timestamp())
                                 if self.timeframe in timeframe_delta_max else 0,
@@ -120,7 +119,6 @@ class Quotes(models.Model):
                 chart = data['chart']['result'][0]
 
                 new = pd.DataFrame(
-                    # TODO: consider timezone (pytz)
                     index=pd.to_datetime(
                         arg=chart['timestamp'],
                         unit='s'
@@ -133,7 +131,7 @@ class Quotes(models.Model):
                 await self.asave()
             except Exception as exc:
                 print(
-                    response, exc,
+                    exc,
                     f'Update error for {self.symbol} on {self.timeframe} timeframe',
                     sep='\n\n'
                 )
@@ -145,11 +143,8 @@ class Quotes(models.Model):
             range_start: DateTime = None,
             range_end: DateTime = None
     ) -> dict:
-        indicator_object = getattr(indicators, name)
-        if indicator_object is None:
-            raise Http404(f'No indicator with name {name}.')
-
-        data = indicator_object(
+        indicator = getattr(indicators, name)
+        data = indicator(
             self.ohlcv, **params
         ).loc[range_start:range_end]
 
@@ -291,7 +286,6 @@ class Stock(models.Model):
             return await Quotes.objects.acreate(
                 stock=self,
                 ohlcv=pd.DataFrame(
-                    # TODO: consider timezone
                     index=pd.to_datetime(
                         arg=chart['timestamp'],
                         unit='s'

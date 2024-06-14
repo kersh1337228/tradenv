@@ -53,23 +53,6 @@ def ema(
     )
 
 
-@indicator(
-    verbose_name='Volume Weighted Moving Average'
-)
-def vwma(
-    quotes: pd.DataFrame,
-    period_length: int,
-    price: Literal['open', 'high', 'low', 'close'] = 'close'
-) -> pd.DataFrame:
-    return wma(
-        quotes, period_length,
-        price, quotes['volume']
-    ).rename(columns={'wma': 'vwma'})
-
-
-@indicator(
-    verbose_name='Weighted Moving Average'
-)
 def wma(
     quotes: pd.DataFrame,
     period_length: int,
@@ -91,6 +74,20 @@ def wma(
         },
         index=quotes.index
     )
+
+
+@indicator(
+    verbose_name='Volume Weighted Moving Average'
+)
+def vwma(
+    quotes: pd.DataFrame,
+    period_length: int,
+    price: Literal['open', 'high', 'low', 'close'] = 'close'
+) -> pd.DataFrame:
+    return wma(
+        quotes, period_length,
+        price, quotes['volume']
+    ).rename(columns={'wma': 'vwma'})
 
 
 @indicator(

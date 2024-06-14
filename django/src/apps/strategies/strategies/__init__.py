@@ -1,3 +1,4 @@
+import datetime
 import inspect
 import pkgutil
 import sys
@@ -15,7 +16,8 @@ import pandas as pd
 from src.apps.portfolios.models import Portfolio
 from src.apps.stocks.models import (
     DateTime,
-    TimeFrame
+    TimeFrame,
+    timeframe_delta
 )
 from src.utils.functions import signature
 
@@ -35,7 +37,7 @@ class Environment:
         self.range_start = range_start
         self.range_end = range_end
         self.commission = commission
-        self.mode = mode
+        self.mode = mode if timeframe_delta[timeframe] >= datetime.timedelta(days=1) else 0
 
     def buy(
             self: Self,
@@ -52,7 +54,7 @@ class Environment:
             amount = max_amount
         amount = amount if amount < max_amount else max_amount
 
-        if not self.portfolio.long_limit is None:
+        if self.portfolio.long_limit is not None:
             longs = stocks[stocks > 0].sum()
             if longs + 1 > self.portfolio.long_limit:
                 return False
@@ -83,7 +85,7 @@ class Environment:
             amount = max_amount
         amount = amount if amount < max_amount else max_amount
 
-        if not self.portfolio.short_limit is None:
+        if self.portfolio.short_limit is not None:
             shorts = stocks[stocks < 0].sum()
             if shorts + 1 > self.portfolio.short_limit:
                 return False
@@ -203,18 +205,17 @@ class Environment:
             exc_val,
             exc_tb
     ):
-        if not exc_type is None:  # finishing
+        if exc_type is not None:  # finishing
             try:
                 while True:
                     self.__next__()
             except StopIteration:
                 pass
-        # TODO: calculate value and unite (balance, stocks, value)
         converters = (await self.portfolio.converters(
             self.timeframe
         )).reindex(self.balance.index)
         currency = self.portfolio.currency
-        value = 0
+        value: pd.Series = 0
 
         for acc in self.balance.columns:
             converter = converters[f'{acc}/{currency}'] if acc != currency else 1
@@ -280,7 +281,8 @@ def strategy(
     return decorator
 
 
-strategies = []
+strategies_list = []
+strategies_data = {}
 for pkg in pkgutil.iter_modules(__path__):
     module = import_module(f'.{pkg.name}', __name__)
 
@@ -288,7 +290,11 @@ for pkg in pkgutil.iter_modules(__path__):
         module, lambda member: isinstance(member, Strategy)
     )
     for name_, value_ in function_strategies:
-        strategies.append(name_)
+        strategies_list.append(name_)
+        strategies_data[name_] = {
+            'verbose_name': value_.verbose_name,
+            'params': value_.params
+        }
         setattr(sys.modules[__name__], name_, value_)
 
     class_strategies = inspect.getmembers(
@@ -297,13 +303,19 @@ for pkg in pkgutil.iter_modules(__path__):
         and member != Strategy
     )
     for name_, value_ in class_strategies:
-        strategies.append(name_)
-        setattr(sys.modules[__name__], name_, value_.as_instance())
+        strategies_list.append(name_)
+        instance = value_.as_instance()
+        strategies_data[name_] = {
+            'verbose_name': instance.verbose_name,
+            'params': instance.params
+        }
+        setattr(sys.modules[__name__], name_, instance)
 
 
 __all__ = (
     'Environment',
     'Strategy',
     'strategy',
-    *strategies
+    'strategies_data',
+    *strategies_list
 )

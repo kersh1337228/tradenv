@@ -24,7 +24,7 @@ class LogListAPIView(AsyncAPIView):
     ):
         return Response(
             data=await serializers.LogPartialSerializer(
-                instance=await models.Log.objects.all(),
+                instance=models.Log.objects.all(),
                 many=True
             ).data,
             status=status.HTTP_200_OK
@@ -77,6 +77,7 @@ class LogListAPIView(AsyncAPIView):
         return Response(
             data=await serializers.LogPartialSerializer(
                 instance=models.Log.objects
+                .order_by()
                 .filter(**query)
                 .distinct()[offset:offset + limit],
                 many=True

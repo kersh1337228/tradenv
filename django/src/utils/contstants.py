@@ -1,3 +1,8 @@
+__all__ = (
+    'http_headers',
+)
+
+
 http_headers = {
     'Connection': 'keep-alive',
     'Expires': '-1',

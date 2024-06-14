@@ -9,7 +9,7 @@ urlpatterns = (
         name='log_list'
     ),
     path( # get | delete
-        route='<slug:slug>',
+        route='<slug:id>',
         view=LogAPIView.as_view(),
         name='log_rd'
     )

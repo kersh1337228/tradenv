@@ -1,15 +1,10 @@
-import pandas as pd
 from rest_framework import serializers
 from src.apps.stocks.models import (
     Stock,
     Quotes,
     timeframe_format
 )
-from src.async_api.serializers import (
-    AsyncModelSerializer,
-    AsyncSerializerMethodField,
-    validated_method
-)
+from src.async_api.serializers import AsyncModelSerializer
 
 
 class QuotesSerializer(AsyncModelSerializer):
@@ -38,8 +33,8 @@ class QuotesSerializer(AsyncModelSerializer):
             timeframe_format[quotes.timeframe]
         )
         return {
-            'change': round(last['close'] - last['open'], 2),
-            'change_percent': round(
+            'abs': round(last['close'] - last['open'], 2),
+            'rel': round(
                 (last['close'] / last['open'] - 1) * 100, 2
             ) if last['open'] != 0 else 'Zero open',
             'ohlcv': ohlcv.to_dict()

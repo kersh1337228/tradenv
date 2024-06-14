@@ -1,11 +1,11 @@
 from django.urls import path
-from .views import StrategyListAPIView
+from . import views
 
 
 urlpatterns = (
-    path(
-        route='list',
-        view=StrategyListAPIView.as_view(),
-        name='strategy_list'
+    path( # get | post
+        route='',
+        view=views.StrategyAPIView.as_view(),
+        name='strategies'
     ),
 )

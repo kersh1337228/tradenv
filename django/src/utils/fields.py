@@ -36,7 +36,7 @@ class DataFrameField(models.BinaryField):
 
         try:
             return pickle.loads(value)
-        except:
+        except pickle.UnpicklingError:
             return pd.DataFrame()
 
     @override

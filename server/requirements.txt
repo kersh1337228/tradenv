@@ -1,7 +1,0 @@
-Django
-djangorestframework
-numpy
-pandas
-aiohttp
-daphne
-django-cors-headers

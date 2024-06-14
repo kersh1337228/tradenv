@@ -14,8 +14,6 @@ from rest_framework.fields import (
 )
 from rest_framework.relations import PKOnlyObject
 from rest_framework.serializers import (
-    Field,
-    SerializerMethodField,
     ListSerializer,
     ModelSerializer,
     raise_errors_on_nested_writes
@@ -28,6 +26,12 @@ from rest_framework.utils.serializer_helpers import (
 )
 from asgiref.sync import sync_to_async
 from django.db import models
+
+
+__all__ = (
+    'validated_method',
+    'AsyncModelSerializer'
+)
 
 
 def validated_method(
@@ -54,20 +58,6 @@ def validated_method(
     return wrapped
 
 
-class AsyncField(Field):
-    pass
-
-
-class AsyncSerializerMethodField(SerializerMethodField):
-    @override
-    async def to_representation(
-            self: Self,
-            value: Any
-    ):
-        method = getattr(self.parent, self.method_name)
-        return await method(value)
-
-
 class AsyncListSerializer(ListSerializer):
     @override
     async def create(
@@ -83,7 +73,7 @@ class AsyncListSerializer(ListSerializer):
     async def update(
             self: Self,
             instance: models.Model,
-            validated_data: dict[str, Any]
+            validated_data: list[dict[str, Any]]
     ) -> list[models.Model]:
         raise NotImplementedError(
             "Serializers with many=True do not support multiple update by "

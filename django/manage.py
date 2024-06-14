@@ -21,7 +21,7 @@ def main():
             'ws': 'none',
             'lifespan': 'off',
             'interface': 'asgi3',
-            'use_colors': True
+            'use_colors': False
         }
         if os.environ.get('DEBUG', 1):
             uvicorn.run(**(config | {

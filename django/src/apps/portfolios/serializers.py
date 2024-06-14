@@ -1,9 +1,7 @@
 from src.apps.portfolios import models
 from src.apps.stocks.serializers import StockSerializer
-from src.async_api.serializers import (
-    AsyncModelSerializer,
-    AsyncSerializerMethodField
-)
+from src.async_api.serializers import AsyncModelSerializer
+from src.async_api.fields import AsyncSerializerMethodField
 
 
 class PortfolioEditSerializer(AsyncModelSerializer):
@@ -99,7 +97,7 @@ class AccountEditSerializer(AsyncModelSerializer):
 
 class AccountSerializer(AsyncModelSerializer):
     class Meta:
-        model = models.StockInstance
+        model = models.Account
         exclude = (
             'portfolio',
         )

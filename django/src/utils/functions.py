@@ -1,6 +1,4 @@
 from typing import (
-    Never,
-    Iterable,
     Callable,
     Literal,
     get_origin,
@@ -8,8 +6,15 @@ from typing import (
 )
 import functools
 import inspect
-from django.http import Http404
 import pandas as pd
+
+
+__all__ = (
+    'paginate',
+    'index_intersection',
+    'type_replacer',
+    'signature'
+)
 
 
 def paginate(
@@ -17,11 +22,16 @@ def paginate(
     current_page: int,
     limit: int = 50,
     pages: int = 5
-) -> dict | Never:
+) -> dict | None:
     pages_amount = count // limit + bool(count % limit)
 
     if current_page <= 0 or current_page > pages_amount:
-        raise Http404(f'Page with number {current_page} does not exist.')
+        return {
+            'page_numbers': [],
+            'no_further': True,
+            'no_back': True,
+            'current_page': current_page
+        }
     else:
         return {
             'page_numbers': list(
@@ -37,8 +47,8 @@ def paginate(
 
 
 def index_intersection(
-        dataframes: Iterable[pd.DataFrame]
-) -> pd.Index:
+        dataframes: list[pd.DataFrame] | tuple[pd.DataFrame, ...]
+) -> pd.DatetimeIndex:
     return functools.reduce(
         lambda i, df: i.intersection(df.index),
         dataframes[1:],

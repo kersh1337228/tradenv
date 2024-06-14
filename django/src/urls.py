@@ -5,22 +5,22 @@ from django.conf.urls.static import static
 
 urlpatterns = (
     path(
-        route='stocks/',
+        route='stocks',
         view=include('src.apps.stocks.urls'),
         name='stocks'
     ),
     path(
-        route='portfolios/',
+        route='portfolios',
         view=include('src.apps.portfolios.urls'),
         name='portfolio'
     ),
     path(
-        route='strategies/',
+        route='strategies',
         view=include('src.apps.strategies.urls'),
         name='strategy'
     ),
     path(
-        route='logs/',
+        route='logs',
         view=include('src.apps.logs.urls'),
         name='log'
     )

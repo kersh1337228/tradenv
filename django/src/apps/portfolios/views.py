@@ -1,9 +1,50 @@
 from typing import override
 from rest_framework.response import Response
 from rest_framework import status
-from src.async_api.views import AsyncAPIView, AsyncModelAPIView
+from src.async_api.views import (
+    AsyncAPIView,
+    AsyncModelAPIView
+)
 from src.apps.portfolios import models
 from src.apps.portfolios import serializers
+
+
+class PortfolioMetaAPIView(AsyncAPIView):
+    @override
+    async def post(
+            self,
+            request,
+            *args,
+            **kwargs
+    ):
+        try:
+            portfolio = await models.Portfolio.objects.aget(
+                id=kwargs.pop('id')
+            )
+
+            meta = kwargs.get('meta')
+            match meta:
+                case 'borders':
+                    return Response(
+                        data=portfolio.borders(
+                            timeframe=request.data.pop('timeframe')
+                        ),
+                        status=status.HTTP_200_OK
+                    )
+
+            return Response(
+                data={
+                    'detail': 'Metadata not found'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except models.Portfolio.DoesNotExist:
+            return Response(
+                data={
+                    'detail': f'Portfolio not found'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class PortfolioAPIView(AsyncModelAPIView):
@@ -63,6 +104,7 @@ class PortfolioListAPIView(AsyncAPIView):
         return Response(
             data=await serializers.PortfolioPartialSerializer(
                 instance=models.Portfolio.objects
+                .order_by()
                 .filter(**query)
                 .distinct()[offset:offset + limit],
                 many=True

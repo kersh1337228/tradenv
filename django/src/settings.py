@@ -22,6 +22,7 @@ else:
 CORS_ALLOW_HEADERS = ['*']
 CORS_ORIGINS_ALLOW_ALL = True
 CSRF_COOKIE_HTTPONLY = True
+APPEND_SLASH = False
 
 
 INSTALLED_APPS = [
@@ -46,12 +47,11 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.cache.UpdateCacheMiddleware',
+    # 'django.middleware.cache.UpdateCacheMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.cache.FetchFromCacheMiddleware',
+    # 'django.middleware.cache.FetchFromCacheMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'src.async_api.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -89,10 +89,11 @@ DATABASES = {
 }
 CONN_MAX_AGE = None
 
+# TODO: use memcached
 CACHES = {
     'default': {
-        'BACKEND': "django.core.cache.backends.locmem.LocMemCache",
-        'LOCATION': 'loc_mem_cache'
+        'BACKEND': "django.core.cache.backends.dummy.DummyCache",
+        'LOCATION': 'dummy'
     }
 }
 CACHE_MIDDLEWARE_ALIAS = 'default'
@@ -113,12 +114,11 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-# AUTH_USER_MODEL = 'user.User'
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
+USE_I18N = False
+USE_TZ = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -127,7 +127,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication'
     ],
     'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer'
+        'src.utils.renderers.JSONRenderer'
     ],
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser'

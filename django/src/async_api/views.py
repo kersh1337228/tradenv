@@ -14,8 +14,14 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
-
 from src.async_api.serializers import AsyncModelSerializer
+
+
+__all__ = (
+    'AsyncAPIView',
+    'async_api_view',
+    'AsyncModelAPIView'
+)
 
 
 class AsyncAPIView(GenericAPIView):
@@ -312,7 +318,7 @@ class AsyncModelAPIView(AsyncAPIView):
                 data=await self.serializer_class(
                     instance=data
                 ).data,
-                status=status.HTTP_200_OK
+                status=status.HTTP_201_CREATED
             )
         return Response(
             data=data,

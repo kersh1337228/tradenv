@@ -5,11 +5,12 @@ from typing import (
     Literal,
     override
 )
+
 from django.core.validators import (
     MinValueValidator,
     RegexValidator
 )
-from django.db import models
+from django.db import models, IntegrityError
 import pandas as pd
 
 from src.apps.logs.models import Log
@@ -25,14 +26,14 @@ from src.utils.functions import index_intersection
 
 def get_currencies() -> tuple[tuple[str, str], ...]:
     try:  # No db table
-        currencies = Stock.objects.values_list(
+        currencies = Stock.objects.order_by().values_list(
             'currency',
             flat=True
         ).distinct()
         return tuple(
             zip(currencies, currencies)
         )
-    except:
+    except IntegrityError:
         return ()
 
 
@@ -105,7 +106,7 @@ class Portfolio(models.Model):
             self: Self
     ) -> models.QuerySet:
         return Log.objects.filter(
-            portfolio=self
+            portfolio__name=self.name
         )
 
     @property
@@ -236,7 +237,7 @@ class Portfolio(models.Model):
             flat=True
         )
 
-    async def time_borders(
+    async def borders(
             self: Self,
             timeframe: TimeFrame
     ) -> tuple[pd.Timestamp, pd.Timestamp]:
@@ -265,14 +266,14 @@ class Portfolio(models.Model):
             range_start: DateTime = None,
             range_end: DateTime = None
     ) -> pd.DataFrame:
-        range = pd.date_range(
+        rng = pd.date_range(
             start=range_start,
             end=range_end,
             freq=timeframe_delta[timeframe]
         )
 
         symbols, quotes = zip(*[
-            (symbol, ohlcv.reindex(range).ffill().dropna())
+            (symbol, ohlcv.reindex(rng).ffill().dropna())
             async for symbol, ohlcv in self.items(timeframe)
         ])
         index = index_intersection(quotes)
@@ -326,28 +327,19 @@ class Portfolio(models.Model):
             }
 
         return {
-            symbol: delta(ohlcv.ffill())
+            symbol: delta(ohlcv.ffill().dropna())
             async for symbol, ohlcv in items
         }
 
     async def create_snapshot(
             self: Self
     ) -> 'Portfolio':
-        snapshot = await self.objects.acreate(
-            slug=f'{self.name}-{
-                datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-            }',
+        snapshot = await self.__class__.objects.acreate(
             name=self.name,
-            balance=self.balance,
+            currency=self.currency,
             is_snapshot=True,
             long_limit=self.long_limit,
-            short_limit=self.short_limit,
-            buy_stop=self.buy_stop,
-            sell_stop=self.sell_stop,
-            buy_limit=self.buy_limit,
-            sell_limit=self.sell_limit,
-            stop_loss=self.stop_loss,
-            take_profit=self.take_profit,
+            short_limit=self.short_limit
         )
 
         async for account in self.accounts:

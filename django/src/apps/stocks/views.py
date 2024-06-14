@@ -1,13 +1,12 @@
-from typing import override, Self
+from typing import override
 from django.db.models import Q
-from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
 from src.async_api.views import AsyncAPIView
-from src.apps.stocks.models import Stock, Quotes
+from src.apps.stocks import models
 from src.apps.stocks import serializers
 from src.utils.functions import paginate
-from src.apps.stocks.indicators import indicators
+from src.apps.stocks.indicators import indicators_data
 
 
 class StockMetaAPIView(AsyncAPIView):
@@ -22,17 +21,30 @@ class StockMetaAPIView(AsyncAPIView):
         match meta:
             case 'type':
                 return Response(
-                    data=Stock.type.field.choices,
+                    data=next(
+                        zip(
+                            *models.Stock.type.field.choices
+                        )
+                    ),
                     status=status.HTTP_200_OK
                 )
             case 'timeframe':
                 return Response(
-                    data=Quotes.timeframe.field.choices,
+                    data=next(
+                        zip(
+                            *models.Quotes.timeframe.field.choices
+                        )
+                    ),
                     status=status.HTTP_200_OK
                 )
             case 'exchange' | 'timezone' | 'country' | 'currency' | 'sector' | 'industry':
                 return Response(
-                    data=Stock.objects.values(meta).distinct(),
+                    data=models.Stock.objects
+                    .order_by()
+                    .values_list(
+                        meta,
+                        flat=True
+                    ).distinct(),
                     status=status.HTTP_200_OK
                 )
 
@@ -57,8 +69,12 @@ class StockMetaAPIView(AsyncAPIView):
                 return Response(
                     data=list(
                         filter(
-                            Stock.type.field.choices,
-                            lambda tp: query in tp
+                            lambda tp: query in tp,
+                            next(
+                                zip(
+                                    *models.Stock.type.field.choices
+                                )
+                            )
                         )
                     ),
                     status=status.HTTP_200_OK
@@ -67,17 +83,26 @@ class StockMetaAPIView(AsyncAPIView):
                 return Response(
                     data=list(
                         filter(
-                            Quotes.timeframe.field.choices,
-                            lambda tf: query in tf
+                            lambda tf: query in tf,
+                            next(
+                                zip(
+                                    *models.Quotes.timeframe.field.choices
+                                )
+                            )
                         )
                     ),
                     status=status.HTTP_200_OK
                 )
             case 'exchange' | 'timezone' | 'country' | 'currency' | 'sector' | 'industry':
                 return Response(
-                    data=Stock.objects.values(meta).filter(**{
+                    data=models.Stock.objects
+                    .order_by()
+                    .filter(**{
                         f'{meta}__icontains': query
-                    }).distinct(),
+                    }).values_list(
+                        meta,
+                        flat=True
+                    ).distinct(),
                     status=status.HTTP_200_OK
                 )
 
@@ -97,14 +122,22 @@ class StockAPIView(AsyncAPIView):
             *args,
             **kwargs
     ):
-        return Response(
-            data=await serializers.StockSerializer(
-                instance=await Stock.objects.aget(
-                    symbol=kwargs.get('symbol')
-                ),
-            ).data,
-            status=status.HTTP_200_OK
-        )
+        try:
+            return Response(
+                data=await serializers.StockSerializer(
+                    instance=await models.Stock.objects.aget(
+                        symbol=kwargs.get('symbol')
+                    ),
+                ).data,
+                status=status.HTTP_200_OK
+            )
+        except models.Stock.DoesNotExist:
+            return Response(
+                data={
+                    'detail': f'Stock not found'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
     @override
     async def post(
@@ -121,8 +154,8 @@ class StockAPIView(AsyncAPIView):
                       Q(name__istartswith=symbol_or_name))
 
         types = request.data.get('types')
-        if type:
-            query &= Q({'type__in': types})
+        if types:
+            query &= Q(type__in=types)
 
         exchange = request.data.get('exchange')
         if exchange:
@@ -131,37 +164,40 @@ class StockAPIView(AsyncAPIView):
 
         timezone = request.data.get('timezone')
         if timezone:
-            query &= Q({'exchange_timezone': timezone})
+            query &= Q(timezone__istartswith=timezone)
 
         country = request.data.get('country')
         if country:
-            query &= Q({'country': country})
+            query &= Q(country__istartswith=country)
 
         currency = request.data.get('currency')
         if currency:
-            query &= Q({'currency': currency})
+            query &= Q(currency__istartswith=currency)
 
         sector = request.data.get('sector')
         if sector:
-            query &= {'sector': sector}
+            query &= Q(sector__istartswith=sector)
 
         industry = request.data.get('industry')
         if industry:
-            query &= {'industry': industry}
+            query &= Q(industry__istartswith=industry)
 
-        limit = int(request.query_params.get('limit', 50))
-        page = int(request.query_params.get('page', 1))
+        limit = int(request.data.get('limit', 50))
+        page = int(request.data.get('page', 1))
 
-        stocks = Stock.objects.filter(query)[:limit] if query else\
-            Stock.objects.all()[(page - 1) * limit:page * limit]
+        stocks = models.Stock.objects.filter(query)
 
         return Response(
             data={
                 'stocks': await serializers.StockSerializer(
-                    instance=stocks,
+                    instance=stocks[(page - 1) * limit:page * limit],
                     many=True
                 ).data,
-                'pagination': paginate(page, limit) if not query else None
+                'pagination': paginate(
+                    count=await stocks.acount(),
+                    current_page=page,
+                    limit=limit
+                )
             },
             status=status.HTTP_200_OK
         )
@@ -175,41 +211,63 @@ class QuotesAPIView(AsyncAPIView):
             *args,
             **kwargs
     ):
-        quotes: Quotes = await Quotes.objects.aget(
-            stock__symbol=kwargs.get('symbol'),
-            timeframe=kwargs.get('timeframe')
-        )
-        await quotes.update_quotes()
+        try:
+            quotes = await models.Quotes.objects.aget(
+                stock__symbol=kwargs.get('symbol'),
+                timeframe=kwargs.get('timeframe')
+            )
+            await quotes.update_quotes()
 
-        return Response(
-            data=await serializers.QuotesSerializer(
-                instance=quotes,
-            ).data,
-            status=status.HTTP_200_OK
-        )
+            return Response(
+                data=await serializers.QuotesSerializer(
+                    instance=quotes,
+                ).data,
+                status=status.HTTP_200_OK
+            )
+        except models.Quotes.DoesNotExist:
+            try:
+                stock = await models.Stock.objects.aget(
+                    symbol=kwargs.get('symbol')
+                )
+
+                return Response(
+                    data=await serializers.QuotesSerializer(
+                        instance=await stock.parse_quotes(
+                            timeframe=kwargs.get('timeframe')
+                        ),
+                    ).data,
+                    status=status.HTTP_200_OK
+                )
+            except models.Stock.DoesNotExist:
+                return Response(
+                    data={
+                        'detail': f'Stock not found'
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
 
 class IndicatorAPIView(AsyncAPIView):
     @override
     async def get(
-            self: Self,
-            request: Request,
+            self,
+            request,
             *args,
             **kwargs
     ):
         return Response(
-            data=indicators,
-            status=200
+            data=indicators_data,
+            status=status.HTTP_200_OK
         )
 
     @override
     async def post(
-            self: Self,
-            request: Request,
+            self,
+            request,
             *args,
             **kwargs
     ):
-        quotes: Quotes = await Quotes.objects.aget(
+        quotes = await models.Quotes.objects.aget(
             stock__symbol=kwargs.get('symbol'),
             timeframe=kwargs.get('timeframe')
         )
@@ -222,5 +280,5 @@ class IndicatorAPIView(AsyncAPIView):
                 range_start=request.data.get('range_start'),
                 range_end=request.data.get('range_end')
             ),
-            status=200
+            status=status.HTTP_200_OK
         )

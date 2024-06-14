@@ -1,4 +1,0 @@
-def assemble(
-
-):
-    pass

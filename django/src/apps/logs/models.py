@@ -3,6 +3,7 @@ from typing import (
     override
 )
 from django.db import models
+from django.core import validators
 from src.utils import fields
 from src.apps.stocks.models import timeframes
 
@@ -13,18 +14,35 @@ class Log(models.Model):
         primary_key=True
     )
 
+    # Strategies and parameters used
+    strategies = models.JSONField()
+
+    portfolio = models.OneToOneField(
+        'portfolios.Portfolio',
+        on_delete=models.CASCADE
+    )
+
     range_start = models.DateTimeField()
     range_end = models.DateTimeField()
     timeframe = models.CharField(
         max_length=3,
         choices=timeframes
     )
-
-    strategies = models.JSONField()  # Strategies and parameters used
-    portfolio = models.OneToOneField(
-        'portfolios.Portfolio',
-        on_delete=models.CASCADE
+    commission = models.FloatField(
+        validators=(
+            validators.MinValueValidator(0.0),
+            validators.MaxValueValidator(1.0)
+        ),
+        default=0.0,
+        null=False,
+        blank=True
     )
+    mode = models.PositiveSmallIntegerField(
+        default=0,
+        null=False,
+        blank=True
+    )
+
     logs = fields.DataFrameField()
 
     create_time = models.DateTimeField(
@@ -40,7 +58,7 @@ class Log(models.Model):
             update_fields=None
     ) -> None:
         if not self.pk:
-            self.slug = self.portfolio.id
+            self.id = self.portfolio.id
 
         super().save(
             force_insert=False,

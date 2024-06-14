@@ -68,7 +68,8 @@ def indicator(
     return decorator
 
 
-indicators = []
+indicators_list = []
+indicators_data = {}
 for pkg in pkgutil.iter_modules(__path__):
     module = import_module(f'.{pkg.name}', __name__)
 
@@ -76,7 +77,13 @@ for pkg in pkgutil.iter_modules(__path__):
         module, lambda member: isinstance(member, Indicator)
     )
     for name_, value_ in function_indicators:
-        indicators.append(name_)
+        indicators_list.append(name_)
+        indicators_data[name_] = {
+            'plots': value_.plots,
+            'verbose_name': value_.verbose_name,
+            'separate': value_.separate,
+            'params': value_.params
+        }
         setattr(sys.modules[__name__], name_, value_)
 
     class_indicators = inspect.getmembers(
@@ -85,12 +92,20 @@ for pkg in pkgutil.iter_modules(__path__):
         and member != Indicator
     )
     for name_, value_ in class_indicators:
-        indicators.append(name_)
-        setattr(sys.modules[__name__], name_, value_.as_instance())
+        indicators_list.append(name_)
+        instance = value_.as_instance()
+        indicators_data[name_] = {
+            'plots': instance.plots,
+            'verbose_name': instance.verbose_name,
+            'separate': instance.separate,
+            'params': instance.params
+        }
+        setattr(sys.modules[__name__], name_, instance)
 
 
 __all__ = (
     'Indicator',
     'indicator',
-    *indicators
+    'indicators_data',
+    *indicators_list
 )

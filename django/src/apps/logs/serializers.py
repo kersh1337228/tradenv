@@ -1,20 +1,42 @@
 import pandas as pd
+from rest_framework import serializers
 from src.apps.logs import models
 from src.apps.portfolios.serializers import PortfolioSerializer
 from src.apps.stocks.models import timeframe_format
-from src.async_api.serializers import (
-    AsyncModelSerializer,
-    AsyncSerializerMethodField
-)
+from src.async_api.serializers import AsyncModelSerializer
+from src.async_api.fields import AsyncSerializerMethodField
 
 
 class LogPartialSerializer(AsyncModelSerializer):
+    strategies = serializers.SerializerMethodField(read_only=True)
+    portfolio = serializers.PrimaryKeyRelatedField(
+        source='portfolio.name',
+        read_only=True
+    )
+
+    @staticmethod
+    def get_strategies(
+            log: models.Log
+    ) -> list[str]:
+        return list(
+            map(
+                lambda pair: f'{pair[0]} ({'; '.join(
+                    map(
+                        lambda param: f'{param[0]}: {param[1]}',
+                        pair[1].items()
+                    )
+                )})',
+                log.strategies
+            )
+        )
+
     class Meta:
         model = models.Log
-        exclude = (
+        fields = (
+            'id',
             'strategies',
             'portfolio',
-            'logs'
+            'create_time'
         )
 
 
@@ -29,10 +51,10 @@ class LogSerializer(AsyncModelSerializer):
             log: models.Log
     ) -> dict:
 
-        def format(
-                log: pd.DataFrame
+        def fmt(
+                logs: pd.DataFrame
         ) -> dict:
-            first, last = log['value'].iloc[[0, -1]]
+            first, last = logs['value'].iloc[[0, -1]]
             return {
                 'abs': round(last - first, 2),
                 'rel': round((last / first - 1) * 100, 2)
@@ -40,7 +62,7 @@ class LogSerializer(AsyncModelSerializer):
 
         return {
             'strategies': {
-                strategy: format(log.logs.loc[strategy])
+                strategy: fmt(log.logs.loc[strategy])
                 for strategy in log.logs.index.levels[0]
             },
             'stocks': await log.portfolio.deltas(
@@ -56,11 +78,11 @@ class LogSerializer(AsyncModelSerializer):
             log: models.Log
     ) -> dict:
 
-        def format(
-                log: pd.DataFrame
+        def fmt(
+                logs: pd.DataFrame
         ) -> list[dict]:
-            return log.set_index(
-                log.index.strftime(
+            return logs.set_index(
+                logs.index.strftime(
                     timeframe_format[log.timeframe]
                 )
             ).reset_index(
@@ -70,7 +92,7 @@ class LogSerializer(AsyncModelSerializer):
             )
 
         return {
-            strategy: format(log.logs.loc[strategy])
+            strategy: fmt(log.logs.loc[strategy])
             for strategy in log.logs.index.levels[0]
         }
 
