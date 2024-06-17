@@ -369,7 +369,7 @@ class AsyncModelAPIView(AsyncAPIView):
             *args,
             **kwargs
     ):
-        model_instance = await self.model.objects.filter(
+        model_instance = self.model.objects.filter(
             id=kwargs.pop('id')
         )
         if await model_instance.aexists():

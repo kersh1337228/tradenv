@@ -5,36 +5,22 @@ from typing import (
     Literal,
     override
 )
-
 from django.core.validators import (
     MinValueValidator,
     RegexValidator
 )
-from django.db import models, IntegrityError
+from django.db import models
 import pandas as pd
-
 from src.apps.logs.models import Log
 from src.apps.stocks.models import (
     Stock,
     Quotes,
     TimeFrame,
     DateTime,
-    timeframe_format, timeframe_delta
+    timeframe_format,
+    timeframe_delta
 )
 from src.utils.functions import index_intersection
-
-
-def get_currencies() -> tuple[tuple[str, str], ...]:
-    try:  # No db table
-        currencies = Stock.objects.order_by().values_list(
-            'currency',
-            flat=True
-        ).distinct()
-        return tuple(
-            zip(currencies, currencies)
-        )
-    except IntegrityError:
-        return ()
 
 
 class Portfolio(models.Model):
@@ -54,7 +40,6 @@ class Portfolio(models.Model):
     )
     currency = models.CharField(
         max_length=3,
-        choices=get_currencies,
         default='USD'
     )
     is_snapshot = models.BooleanField(
@@ -364,12 +349,10 @@ class Portfolio(models.Model):
             using=None,
             update_fields=None
     ):
-        old = Portfolio.objects.filter(
-            id=self.id
-        )
-        self.id = f'{self.name}-{
-            datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        }' if self.is_snapshot else self.name
+        if not self.pk:
+            self.id = f'{self.name}-{
+                datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            }' if self.is_snapshot else self.name
 
         super().save(
             force_insert,
@@ -377,7 +360,6 @@ class Portfolio(models.Model):
             using,
             update_fields
         )
-        old.delete()
 
     class Meta:
         get_latest_by = '-name'
@@ -428,7 +410,7 @@ class StockInstance(models.Model):
             update_fields=None
     ):
         if not self.pk:
-            self.id = f'{self.stock.symbol}_in_{self.portfolio.id}'
+            self.id = f'{self.stock_id}_in_{self.portfolio_id}'
 
         super().save(
             force_insert,
@@ -442,9 +424,15 @@ class StockInstance(models.Model):
         ordering = (
             '-priority',
         )
-        unique_together = (
-            'stock',
-            'portfolio'
+        constraints = (
+            models.UniqueConstraint(
+                name='unique_stock_in_portfolio',
+                fields=('stock', 'portfolio')
+            ),
+            models.UniqueConstraint(
+                name='unique_priority_in_portfolio',
+                fields=('portfolio', 'priority')
+            )
         )
 
 
@@ -459,7 +447,6 @@ class Account(models.Model):
     )
     currency = models.CharField(
         max_length=3,
-        choices=get_currencies,
         default='USD'
     )
     balance = models.FloatField(
@@ -477,7 +464,7 @@ class Account(models.Model):
             update_fields=None
     ):
         if not self.pk:
-            self.id = f'{self.portfolio.id}_{self.currency}'
+            self.id = f'{self.portfolio_id}_{self.currency}'
 
         super().save(
             force_insert,
@@ -491,7 +478,9 @@ class Account(models.Model):
         ordering = (
             'currency',
         )
-        unique_together = (
-            'portfolio',
-            'currency'
+        constraints = (
+            models.UniqueConstraint(
+                name='unique_currency_in_portfolio',
+                fields=('portfolio', 'currency')
+            ),
         )

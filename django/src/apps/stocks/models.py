@@ -124,7 +124,7 @@ class Quotes(models.Model):
                         unit='s'
                     ),
                     data=chart['indicators']['quote'][0]
-                )
+                )[['open', 'high', 'low', 'close', 'volume']]
                 self.ohlcv = self.ohlcv.reindex(self.ohlcv.index.union(new.index))
                 self.ohlcv.loc[new.index] = new
 
@@ -148,6 +148,12 @@ class Quotes(models.Model):
             self.ohlcv, **params
         ).loc[range_start:range_end]
 
+        serialized = data.set_index(
+            data.index.strftime(
+                timeframe_format[self.timeframe]
+            )
+        ).to_dict('series')
+
         return {
             'name': name,
             'params': params,
@@ -159,11 +165,7 @@ class Quotes(models.Model):
                 key: value.to_frame().reset_index(
                     names='timestamp'
                 )[['timestamp', key]].values.tolist()
-                for key, value in data.set_index(
-                    data.index.strftime(
-                        timeframe_format[self.timeframe]
-                    )
-                ).to_dict('series').items()
+                for key, value in serialized.items()
             }
         }
 
@@ -176,7 +178,7 @@ class Quotes(models.Model):
             update_fields=None
     ):
         if not self.pk:
-            self.id = f'{self.stock.symbol}_{self.timeframe}'
+            self.id = f'{self.stock_id}_{self.timeframe}'
 
         super().save(
             force_insert,
@@ -190,9 +192,11 @@ class Quotes(models.Model):
         ordering = (
             'update_time',
         )
-        unique_together = (
-            'stock',
-            'timeframe'
+        constraints = (
+            models.UniqueConstraint(
+                name='unique_timeframe_per_stock',
+                fields=('stock', 'timeframe')
+            ),
         )
 
 
@@ -291,7 +295,7 @@ class Stock(models.Model):
                         unit='s'
                     ),
                     data=chart['indicators']['quote'][0]
-                ),
+                )[['open', 'high', 'low', 'close', 'volume']],
                 timeframe=timeframe
             )
         except Exception as exc:

@@ -1,6 +1,13 @@
+from typing import override
+
+from django.db.models import QuerySet
+from rest_framework.exceptions import ValidationError
 from src.apps.portfolios import models
 from src.apps.stocks.serializers import StockSerializer
-from src.async_api.serializers import AsyncModelSerializer
+from src.async_api.serializers import (
+    AsyncModelSerializer,
+    validated_method
+)
 from src.async_api.fields import AsyncSerializerMethodField
 
 
@@ -70,9 +77,8 @@ class PortfolioSerializer(AsyncModelSerializer):
 class StockInstanceEditSerializer(AsyncModelSerializer):
     class Meta:
         model = models.StockInstance
-        fields = (
-            'amount',
-            'priority'
+        exclude = (
+            'id',
         )
 
 
@@ -87,11 +93,28 @@ class StockInstanceSerializer(AsyncModelSerializer):
 
 
 class AccountEditSerializer(AsyncModelSerializer):
+    @override
+    @validated_method
+    async def create_or_update(self):
+        currency = self.validated_data.get('currency')
+        if currency:
+            if not await (
+                    models.Stock.objects
+                    .filter(currency=currency)
+                    .aexists()
+            ):
+                raise ValidationError(detail={
+                    'currency': (
+                        'Invalid currency symbol',
+                    ),
+                })
+
+        return await self.save()
+
     class Meta:
         model = models.Account
-        fields = (
-            'currency',
-            'balance'
+        exclude = (
+            'id',
         )
 
 

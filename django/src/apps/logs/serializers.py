@@ -13,7 +13,7 @@ class LogPartialSerializer(AsyncModelSerializer):
         source='portfolio.name',
         read_only=True
     )
-    # TODO: show more useful log-data
+
     @staticmethod
     def get_strategies(
             log: models.Log
@@ -45,7 +45,7 @@ class LogSerializer(AsyncModelSerializer):
     results = AsyncSerializerMethodField(read_only=True)
     logs = AsyncSerializerMethodField(read_only=True)
     quotes = AsyncSerializerMethodField(read_only=True)
-
+    # TODO: show more useful log-data
     @staticmethod
     async def get_results(
             log: models.Log

@@ -58,7 +58,7 @@ class Log(models.Model):
             update_fields=None
     ) -> None:
         if not self.pk:
-            self.id = self.portfolio.id
+            self.id = self.portfolio_id
 
         super().save(
             force_insert=False,

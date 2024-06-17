@@ -17,7 +17,7 @@ def sma(
     return pd.DataFrame(
         data={
             'sma': np.hstack((
-                np.full(period_length, None),
+                np.full(period_length, np.nan),
                 np.vectorize(
                     lambda i: prices[i - period_length:i].mean()
                 )(np.arange(period_length, prices.size))
@@ -40,7 +40,7 @@ def ema(
     return pd.DataFrame(
         data={
             'ema': np.hstack((
-                np.full(period_length, None),
+                np.full(period_length, np.nan),
                 np.vectorize(
                     lambda i: np.average(
                         prices[i - period_length:i],
@@ -63,7 +63,7 @@ def wma(
     return pd.DataFrame(
         data={
             'wma': np.hstack((
-                np.full(period_length, None),
+                np.full(period_length, np.nan),
                 np.vectorize(
                     lambda i: np.average(
                         prices[i - period_length:i],
@@ -93,10 +93,11 @@ def vwma(
 @indicator(
     verbose_name='Moving Averages Convergence Divergence',
     plots={
+        'hist': 'hist',
         'macd': 'line',
-        'signal': 'line',
-        'hist': 'hist'
-    }
+        'signal': 'line'
+    },
+    separate=True
 )
 def macd(
     quotes: pd.DataFrame,
@@ -125,4 +126,4 @@ def macd(
     result = result.assign(
         hist=lambda data: data['macd'] - data['signal']
     )
-    return result[['macd', 'signal', 'hist']].replace([np.nan], [None])
+    return result[['hist', 'macd', 'signal']]

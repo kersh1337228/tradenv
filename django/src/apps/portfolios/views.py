@@ -63,7 +63,8 @@ class PortfolioListAPIView(AsyncAPIView):
     ):
         return Response(
             data=await serializers.PortfolioPartialSerializer(
-                instance=await models.Portfolio.objects.all(),
+                instance=models.Portfolio.objects
+                .filter(is_snapshot=False),
                 many=True
             ).data,
             status=status.HTTP_200_OK
@@ -82,9 +83,9 @@ class PortfolioListAPIView(AsyncAPIView):
         if name:
             query |= {'name__icontains': name}
 
-        create_time__start = request.data.get('publish_time__start')
+        create_time__start = request.data.get('create_time__start')
         if create_time__start:
-            query |= {'publish_time__gte': create_time__start}
+            query |= {'create_time__gte': create_time__start}
 
         create_time__end = request.data.get('create_time__end')
         if create_time__end:
@@ -105,7 +106,7 @@ class PortfolioListAPIView(AsyncAPIView):
             data=await serializers.PortfolioPartialSerializer(
                 instance=models.Portfolio.objects
                 .order_by()
-                .filter(**query)
+                .filter(is_snapshot=False, **query)
                 .distinct()[offset:offset + limit],
                 many=True
             ).data,
