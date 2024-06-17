@@ -2,31 +2,30 @@
 
 import React, {
     ChangeEventHandler,
-    HTMLAttributes,
-    ReactElement,
+    HTMLInputTypeAttribute,
     RefObject
 } from 'react';
 import styles from './styles.module.css';
 
-export default function Select(
+export default function Input(
     {
         name,
+        type,
         errors,
         label = '',
         required = true,
         defaultValue,
         inputRef,
-        onChange,
-        children
+        onChange
     }: {
         name: string;
+        type: HTMLInputTypeAttribute;
         errors?: string[];
         label?: string;
         required?: boolean;
         defaultValue?: string | number;
-        inputRef?: RefObject<HTMLSelectElement>;
-        onChange?: ChangeEventHandler<HTMLSelectElement> | undefined;
-        children: any;
+        inputRef?: RefObject<HTMLInputElement>;
+        onChange?: ChangeEventHandler<HTMLInputElement> | undefined;
     }
 ) {
     return <div
@@ -42,16 +41,14 @@ export default function Select(
                 </li>
             )}
         </ul>
-        <select
-            className={styles.select}
-            id={name}
+        <input
             name={name}
-            required={required}
+            type={type}
+            placeholder={label}
             defaultValue={defaultValue}
+            required={required}
             ref={inputRef}
             onChange={onChange}
-        >
-            {children}
-        </select>
+        />
     </div>;
 }

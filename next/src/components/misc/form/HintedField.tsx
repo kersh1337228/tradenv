@@ -21,6 +21,7 @@ export default function HintedField(
         setValue,
         search,
         label = '',
+        required = false,
         errors,
         className,
         inputRef
@@ -30,6 +31,7 @@ export default function HintedField(
         setValue: Dispatch<SetStateAction<string>>;
         search: (query: string) => Promise<string[]>;
         label?: string;
+        required?: boolean;
         errors?: string[];
         className?: string;
         inputRef?: RefObject<HTMLInputElement>;
@@ -94,6 +96,7 @@ export default function HintedField(
                 }
             }}
             defaultValue={queryRef.current}
+            required={required}
             ref={inputRef}
         />
         <datalist

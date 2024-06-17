@@ -1,10 +1,10 @@
-import StocksList from 'src/components/stocks/list/StocksList';
+import StocksList from 'components/stocks/list/StocksList';
 import {
     Metadata
 } from 'next';
 import {
     serverRequest
-} from 'src/utils/actions';
+} from 'utils/actions';
 
 export const metadata: Metadata = {
     title: 'Stocks'
@@ -18,7 +18,7 @@ export default async function Page() {
     )).data;
 
     return <StocksList
-        stocks_={response.stocks}
-        pagination_={response.pagination}
+        stocks={response.stocks}
+        pagination={response.pagination}
     />;
 }

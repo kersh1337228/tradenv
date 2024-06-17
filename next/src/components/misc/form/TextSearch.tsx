@@ -13,12 +13,14 @@ export default function TextSearch(
         name,
         value,
         setValue,
-        label = ''
+        label = '',
+        type = 'search'
     }: {
         name: string;
         value: string;
         setValue: Dispatch<SetStateAction<string>>;
         label?: string;
+        type?: string;
     }
 ) {
     const handleSearch = debounce(
@@ -32,7 +34,7 @@ export default function TextSearch(
             {label}
         </label> : null}
         <input
-            type="search"
+            type={type}
             id={name}
             name={name}
             placeholder={label}

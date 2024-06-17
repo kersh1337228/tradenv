@@ -21,3 +21,9 @@ export function debounce(
         }, wait);
     };
 }
+
+export function randomColor(): string {
+    return `#${Math.round(
+        0xffffff * Math.random()
+    ).toString(16)}`;
+}

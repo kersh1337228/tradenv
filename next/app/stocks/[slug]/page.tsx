@@ -1,7 +1,7 @@
 import {
     serverRequest
-} from 'src/utils/actions';
-import Stock from 'src/components/stocks/detail/Stock';
+} from 'utils/actions';
+import Stock from 'components/stocks/detail/Stock';
 
 export async function generateMetadata(
     {
@@ -26,13 +26,11 @@ export default async function Page(
         };
     }
 ) {
-    const id = decodeURI(params.slug).replaceAll('%3D', '=');
-
     const stock = (await serverRequest(
-        `stocks/${id}`,
+        `stocks/${decodeURI(params.slug).replaceAll('%3D', '=')}`,
         'GET',
         { cache: 'force-cache' }
-    )).data as Stock;
+    )).data as StockObject;
 
     const timeframes = (await serverRequest(
         'stocks/meta/timeframe',
@@ -40,15 +38,15 @@ export default async function Page(
         { cache: 'force-cache' }
     )).data as string[];
 
-    const quotes = (await serverRequest(
-        `stocks/${id}/${timeframes[0]}`,
+    const indicators = (await serverRequest(
+        `stocks/indicators`,
         'GET',
         { cache: 'no-store' }
-    )).data as Quotes;
+    )).data as Record<string, IndicatorAvailable>;
 
     return <Stock
         stock={stock}
         timeframes={timeframes}
-        quotes_={quotes}
-    />
+        indicators={indicators}
+    />;
 }

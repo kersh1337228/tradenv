@@ -2,8 +2,8 @@ import React from 'react';
 import {
     Metadata
 } from 'next';
-import Header from 'src/components/root/header/Header';
-import Footer from 'src/components/root/footer/Footer';
+import Header from 'components/root/header/Header';
+import Footer from 'components/root/footer/Footer';
 import './global.css';
 
 export const dynamic = 'force-dynamic';

@@ -1,7 +1,7 @@
 'use client';
 
 import Error from 'next/error';
-import CommonError from 'src/components/misc/errors/common';
+import CommonError from 'components/misc/errors/common';
 
 export default function ErrorPage(
     {

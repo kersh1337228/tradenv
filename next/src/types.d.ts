@@ -1,3 +1,9 @@
+type BasicType = 'int' | 'float' | 'str' | 'bool'
+    | 'list[int]' | 'list[float]' | 'list[str]' | 'list[bool]'
+    | number[] | string[];
+type BasicValue = number | string | boolean | null
+    | number[] | string[] | boolean[];
+
 type JSONResponse = {
     data: Record<string, any>;
     ok: boolean;
@@ -28,7 +34,7 @@ type PaginationType = {
 type StockType = 'stock' | 'etf' | 'fund' | 'futures'
     | 'forex' | 'index' | 'bond' | 'option' | 'crypto';
 
-type Stock = {
+type StockObject = {
     symbol: string;
     name?: string;
     type: StockType;
@@ -45,7 +51,7 @@ type Stock = {
     }[];
 };
 
-type Quotes = {
+type QuotesObject = {
     ohlcv: OHLCV[];
     timeframe: string;
     update_time: string;
@@ -56,35 +62,86 @@ type Quotes = {
     }
 };
 
+type IndicatorAvailable = {
+    params: Record<string, BasicType>;
+    verbose_name: string;
+    plots: Record<string, 'line' | 'hist'>;
+    separate: boolean;
+}
+
+type Indicator = {
+    name: string;
+    params: Record<string, BasicValue>;
+    verbose_name: string;
+    data: Record<string, [string, number | null][] | {
+        timestamp: string;
+        [key: string]: any;
+    }[]>;
+}
+
 type StockInstance = {
+    id: string;
     stock: StockPartial;
     amount: number;
     priority: number;
 };
 
-type PortfolioMixin = {
-    slug: string;
-    name: string;
+type Account = {
+    id: string;
+    currency: string;
     balance: number;
-    created: string;
-    last_updated: string;
 };
 
-interface PortfolioPartial extends PortfolioMixin {
-    stocks_amount: number;
+type PortfolioPartial = {
+    id: string;
+    name: string;
+    currency: string;
+    create_time: string;
+    update_time: string;
+};
+
+interface Portfolio extends PortfolioPartial {
+    long_limit: number | null;
+    short_limit: number | null;
+    accounts: Account[];
+    stocks: StockInstance[];
+    logs: LogPartial[];
 }
 
-interface Portfolio extends PortfolioMixin {
-    stocks: StockInstance[];
-    long_limit: number;
-    short_limit: number;
-    buy_stop: number;
-    sell_stop: number;
-    buy_limit: number;
-    sell_limit: number;
-    stop_loss: number;
-    take_profit: number;
-}
+type LogPartial = {
+    id: string;
+    strategies: string[];
+    portfolio: string;
+    create_time: string;
+};
+
+type Log = {
+    id: string;
+    strategies: Record<string, Record<string, BasicValue>>;
+    portfolio: Portfolio;
+    range_start: string;
+    range_end: string;
+    timeframe: string;
+    commission: number;
+    mode: number;
+    logs: Record<string, {
+        timestamp: string;
+        value: number;
+        [currencyOrSymbol: string]: number;
+    }[]>;
+    create_time: string;
+    results: {
+        strategies: Record<string, {
+            abs: number;
+            rel: number;
+        }>;
+        stocks: Record<string, {
+            abs: number;
+            rel: number;
+        }>;
+    };
+    quotes: OHLCV[];
+};
 
 type Args = {
     [key: string]: 'str' | 'int' | 'float'

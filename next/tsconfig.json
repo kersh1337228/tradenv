@@ -23,7 +23,7 @@
             }
         ],
         "experimentalDecorators": true,
-        "baseUrl": "."
+        "baseUrl": "src"
     },
     "include": [
         "next-env.d.ts",

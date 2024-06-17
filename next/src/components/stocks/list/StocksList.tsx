@@ -33,15 +33,15 @@ function stockMeta(meta: string) {
 
 export default function StocksList(
     {
-        stocks_,
-        pagination_
+        stocks,
+        pagination
     }: {
-        stocks_: Stock[];
-        pagination_: PaginationType;
+        stocks: StockObject[];
+        pagination: PaginationType;
     }
 ) {
-    const [stocks, setStocks] = useState(stocks_);
-    const [pagination, setPagination] = useState(pagination_);
+    const [stocks_, setStocks] = useState(stocks);
+    const [pagination_, setPagination] = useState(pagination);
 
     const searchParams = useSearchParams();
     const pathname = usePathname();
@@ -91,7 +91,7 @@ export default function StocksList(
         params.set('sector', sector);
         params.set('industry', industry);
         params.set('limit', limit.toString());
-        params.set('page', pagination.current_page.toString());
+        params.set('page', pagination_.current_page.toString());
 
         replace(`${pathname}?${params.toString()}`);
 
@@ -102,21 +102,21 @@ export default function StocksList(
                 { 'cache': 'no-store' },
                 {
                     symbol_or_name: symbolOrName,
-                    types: types,
-                    exchange: exchange,
-                    timezone: timezone,
-                    country: country,
-                    currency: currency,
-                    sector: sector,
-                    industry: industry,
-                    limit: limit,
-                    page: pagination.current_page
+                    types,
+                    exchange,
+                    timezone,
+                    country,
+                    currency,
+                    sector,
+                    industry,
+                    limit,
+                    page: pagination_.current_page
                 }
             );
 
             if (response.ok) {
                 const { stocks, pagination } = response.data;
-                setStocks(stocks as Stock[]);
+                setStocks(stocks as StockObject[]);
                 setPagination(pagination as PaginationType);
             }
         })()
@@ -130,7 +130,7 @@ export default function StocksList(
         sector,
         industry,
         limit,
-        pagination.current_page
+        pagination_.current_page
     ]);
 
     return <main>
@@ -200,7 +200,7 @@ export default function StocksList(
             </form>
         </section>
         <section>
-            {stocks.length ? <>
+            {stocks_.length ? <>
                 <table>
                     <thead>
                     <tr>
@@ -216,7 +216,7 @@ export default function StocksList(
                     </tr>
                     </thead>
                     <tbody>
-                    {stocks.map(stock =>
+                    {stocks_.map(stock =>
                         <tr key={stock.symbol}>
                             <td>
                                 <Link href={`/stocks/${stock.symbol}`}>
@@ -240,7 +240,7 @@ export default function StocksList(
                     </tbody>
                 </table>
                 <Pagination
-                    pagination={pagination}
+                    pagination={pagination_}
                     setPage={(page) => {
                         setPagination(pagination => {
                             return {

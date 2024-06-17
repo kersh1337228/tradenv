@@ -1,7 +1,7 @@
 import {
     Metadata
 } from 'next';
-import NotFound from 'src/components/misc/errors/404';
+import NotFound from 'components/misc/errors/404';
 
 export const metadata: Metadata = {
     title: 'Not found'

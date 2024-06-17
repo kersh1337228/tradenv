@@ -14,14 +14,16 @@ export default function Stock(
     {
         stock,
         timeframes,
-        quotes_
+        indicators
     }: {
-        stock: Stock;
+        stock: StockObject;
         timeframes: string[];
-        quotes_: Quotes;
+        indicators: Record<string, IndicatorAvailable>;
     }
 ) {
-    const [quotes, setQuotes] = useState(quotes_);
+    const [loading, setLoading] = useState(false);
+    const [quotes, setQuotes] = useState<QuotesObject>();
+    const [timeframe, setTimeframe] = useState(timeframes[0]);
 
     return <main>
         <section>
@@ -75,19 +77,26 @@ export default function Stock(
             <h1>Quotes</h1>
             <Select
                 name="timeframe"
-                label="Timeframe"
-                defaultValue={timeframes[0]}
+                defaultValue="default"
                 onChange={async (event) => {
+                    setLoading(true);
+
+                    const timeframe = event.target.value;
                     const response = await serverRequest(
-                        `stocks/${stock.symbol}/${event.target.value}`,
+                        `stocks/${stock.symbol}/${timeframe}`,
                         'GET',
                         { cache: 'no-store' }
                     );
 
-                    if (response.ok)
-                        setQuotes(response.data as Quotes);
+                    if (response.ok) {
+                        setTimeframe(timeframe);
+                        setQuotes(response.data as QuotesObject);
+                    }
+
+                    setLoading(false);
                 }}
             >
+                <option disabled value="default">Timeframe</option>
                 {timeframes.map(timeframe =>
                     <option
                         key={timeframe}
@@ -97,10 +106,15 @@ export default function Stock(
                     </option>
                 )}
             </Select>
-            <Quotes
+            {loading ? <span>
+                Loading quotes...
+            </span> : null}
+            {quotes ? <Quotes
                 stock={stock}
+                timeframe={timeframe}
                 quotes={quotes}
-            />
+                indicators={indicators}
+            /> : null}
         </section>
     </main>;
 }
