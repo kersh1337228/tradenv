@@ -12,6 +12,24 @@ from src.async_api.fields import AsyncSerializerMethodField
 
 
 class PortfolioEditSerializer(AsyncModelSerializer):
+    @override
+    @validated_method
+    async def create_or_update(self):
+        currency = self.validated_data.get('currency')
+        if currency:
+            if not await (
+                    models.Stock.objects
+                    .filter(currency=currency)
+                    .aexists()
+            ):
+                raise ValidationError(detail={
+                    'currency': (
+                        'Invalid currency symbol',
+                    ),
+                })
+
+        return await self.save()
+
     class Meta:
         model = models.Portfolio
         exclude = (

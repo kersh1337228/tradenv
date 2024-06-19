@@ -63,9 +63,9 @@ class LogListAPIView(AsyncAPIView):
         if portfolio:
             query |= {'portfolio__name__istartswith': portfolio}
 
-        create_time__start = request.data.get('publish_time__start')
+        create_time__start = request.data.get('create_time__start')
         if create_time__start:
-            query |= {'publish_time__gte': create_time__start}
+            query |= {'create_time__gte': create_time__start}
 
         create_time__end = request.data.get('create_time__end')
         if create_time__end:

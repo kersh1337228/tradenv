@@ -26,7 +26,7 @@ class PortfolioMetaAPIView(AsyncAPIView):
             match meta:
                 case 'borders':
                     return Response(
-                        data=portfolio.borders(
+                        data=await portfolio.borders(
                             timeframe=request.data.pop('timeframe')
                         ),
                         status=status.HTTP_200_OK

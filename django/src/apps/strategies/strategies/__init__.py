@@ -37,7 +37,8 @@ class Environment:
         self.range_start = range_start
         self.range_end = range_end
         self.commission = commission
-        self.mode = mode if timeframe_delta[timeframe] >= datetime.timedelta(days=1) else 0
+        self.freq = timeframe_delta[timeframe]
+        self.mode = mode if self.freq >= datetime.timedelta(days=1) else 0
 
     def buy(
             self: Self,
@@ -173,7 +174,7 @@ class Environment:
             range_start=self.range_start,
             range_end=self.range_end
         )
-        timestamps = self.quotes.index.levels[1]
+        timestamps = self.quotes.index.get_level_values(1).unique()
         self.balance = pd.DataFrame(
             data={
                 currency: balance
@@ -185,7 +186,12 @@ class Environment:
             index=timestamps
         )
         self.stocks = pd.DataFrame(
-            data=dict.fromkeys(self.quotes.index.levels[0], 0),
+            data=dict.fromkeys(
+                self.quotes.index
+                .get_level_values(0)
+                .unique(),
+                0
+            ),
             index=timestamps
         )
         self.currencies = {
@@ -212,8 +218,10 @@ class Environment:
             except StopIteration:
                 pass
         converters = (await self.portfolio.converters(
-            self.timeframe
-        )).reindex(self.balance.index)
+            self.timeframe,
+            self.range_start,
+            self.range_end
+        ))
         currency = self.portfolio.currency
         value: pd.Series = 0
 

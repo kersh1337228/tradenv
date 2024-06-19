@@ -3,7 +3,6 @@ from . import views
 
 
 urlpatterns = (
-    # portfolio
     path(  # get | post
         route='',
         view=views.PortfolioListAPIView.as_view(),
@@ -39,9 +38,9 @@ urlpatterns = (
         view=views.StockInstanceAPIView.as_view(),
         name='portfolio_stocks_ud'
     ),
-    path(  # get | post
+    path(  # post
         route='/<slug:id>/<slug:meta>',
-        view=views.PortfolioListAPIView.as_view(),
+        view=views.PortfolioMetaAPIView.as_view(),
         name='portfolio_meta'
     )
 )

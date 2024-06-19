@@ -12,6 +12,7 @@ from .utils import (
 )
 from ..logs.models import Log
 from ..portfolios.models import Portfolio
+from ..stocks.models import timeframe_delta
 
 
 class StrategyAPIView(AsyncAPIView):
@@ -41,9 +42,43 @@ class StrategyAPIView(AsyncAPIView):
             id=request.data.pop('portfolio')
         )
 
-        range_start = request.data.pop('range_start')
-        range_end = request.data.pop('range_end')
+        if await (
+                portfolio.stocks
+                .order_by()
+                .values_list('stock__currency', flat=True)
+                .distinct()
+                .difference(
+                    portfolio.accounts
+                    .order_by()
+                    .values_list('currency', flat=True)
+                )
+                .aexists()
+        ):
+            return Response(
+                data={
+                    'portfolio': ['Portfolio contains stocks with no matching account to pay']
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         timeframe = request.data.pop('timeframe')
+        delta = timeframe_delta[timeframe]
+
+        range_start = pd.Timestamp(
+            request.data.pop('range_start')
+        ).floor(delta)
+        range_end = pd.Timestamp(
+            request.data.pop('range_end')
+        ).floor(delta)
+
+        if range_start == range_end:
+            return Response(
+                data={
+                    'range': ['Range end must be strictly after range start']
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         commission = request.data.pop('commission')
         mode = request.data.pop('mode')
 
@@ -78,7 +113,19 @@ class StrategyAPIView(AsyncAPIView):
                     mode=mode
                 )
             ),)
-
+        t = pd.concat(
+            objs=logs,
+            axis=0,
+            keys=map(
+                lambda pair: f'{pair[0]} ({'; '.join(
+                    map(
+                        lambda param: f'{param[0]}: {param[1]}',
+                        pair[1].items()
+                    )
+                )})',
+                strategies
+            )
+        )
         log = await Log.objects.acreate(
             strategies=strategies,
             portfolio=await portfolio.create_snapshot(),

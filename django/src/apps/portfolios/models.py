@@ -105,7 +105,9 @@ class Portfolio(models.Model):
 
     async def converters(
             self: Self,
-            timeframe: TimeFrame
+            timeframe: TimeFrame,
+            range_start: DateTime = None,
+            range_end: DateTime = None
     ) -> pd.DataFrame:
         accounts_currency = [
             currency async for currency in self.accounts.values_list(
@@ -127,8 +129,19 @@ class Portfolio(models.Model):
             )
         )
 
+        delta = timeframe_delta[timeframe]
+        rng = pd.date_range(
+            start=range_start,
+            end=range_end,
+            freq=delta
+        ).floor(delta).unique()
+
+        def fill(ohlcv: pd.DataFrame) -> pd.DataFrame:
+            ohlcv.index = ohlcv.index.floor(delta).unique()
+            return ohlcv.reindex(rng).ffill().bfill()
+
         items = [
-            (name, ohlcv)
+            (name, fill(ohlcv))
             async for name, ohlcv in Quotes.objects.filter(
                 stock__name__in=forex_names,
                 timeframe=timeframe
@@ -137,20 +150,10 @@ class Portfolio(models.Model):
                 'ohlcv'
             )
         ]
-        index = index_intersection(
-            tuple(
-                map(
-                    lambda pair: pair[1],
-                    items
-                )
-            )
-        )
 
         return pd.concat(
             objs=map(
                 lambda pair: pair[1]['close']
-                .ffill()
-                .reindex(index)
                 .rename(pair[0]),
                 items
             ),
@@ -162,16 +165,14 @@ class Portfolio(models.Model):
             self: Self
     ) -> models.QuerySet:
         accounts_currency = [
-            currency async for currency in self.accounts.values_list(
-                'currency',
-                flat=True
-            )
+            currency async for currency in self.accounts
+            .values_list('currency', flat=True)
         ]
         stocks_currency = [
-            currency async for currency in self.stocks.values_list(
-                'stock__currency',
-                flat=True
-            )
+            currency async for currency in self.stocks
+            .order_by()
+            .values_list('stock__currency', flat=True)
+            .distinct()
         ]
         forex_names = tuple(
             map(
@@ -229,6 +230,9 @@ class Portfolio(models.Model):
         lower = pd.Timestamp.min
         upper = pd.Timestamp.max
 
+        async for instance in self.stocks.select_related('stock'):
+            await instance.stock.parse_quotes(timeframe)
+
         quotes = self.quotes(timeframe)
         async for q in quotes:
             start, end = q.dropna().index[[0, -1]]
@@ -251,20 +255,25 @@ class Portfolio(models.Model):
             range_start: DateTime = None,
             range_end: DateTime = None
     ) -> pd.DataFrame:
+        delta = timeframe_delta[timeframe]
         rng = pd.date_range(
             start=range_start,
             end=range_end,
-            freq=timeframe_delta[timeframe]
-        )
+            freq=delta
+        ).floor(delta).unique()
+        rng.freq = delta
+
+        def fill(ohlcv: pd.DataFrame) -> pd.DataFrame:
+            ohlcv.index = ohlcv.index.floor(delta).unique()
+            return ohlcv.reindex(rng).ffill().bfill()
 
         symbols, quotes = zip(*[
-            (symbol, ohlcv.reindex(rng).ffill().dropna())
+            (symbol, fill(ohlcv))
             async for symbol, ohlcv in self.items(timeframe)
         ])
-        index = index_intersection(quotes)
 
         return pd.concat(
-            objs=map(lambda df: df.reindex(index), quotes),
+            objs=quotes,
             axis=0,
             keys=symbols
         ).loc[pd.IndexSlice[:, range_start:range_end], :]
@@ -303,16 +312,16 @@ class Portfolio(models.Model):
         items = self.items(timeframe)
 
         def delta(ohlcv: pd.DataFrame):
-            first, last = ohlcv.loc[
+            first, last = ohlcv.ffill().bfill().loc[
                 slice(range_start, range_end), price
-            ][[0, -1]]
+            ].iloc[[0, -1]]
             return {
                 'rel': round((last / first - 1) * 100, 2) if first else None,
                 'abs': round(last - first, 2)
             }
 
         return {
-            symbol: delta(ohlcv.ffill().dropna())
+            symbol: delta(ohlcv)
             async for symbol, ohlcv in items
         }
 

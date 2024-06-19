@@ -45,7 +45,7 @@ class LogSerializer(AsyncModelSerializer):
     results = AsyncSerializerMethodField(read_only=True)
     logs = AsyncSerializerMethodField(read_only=True)
     quotes = AsyncSerializerMethodField(read_only=True)
-    # TODO: show more useful log-data
+
     @staticmethod
     async def get_results(
             log: models.Log
@@ -54,16 +54,45 @@ class LogSerializer(AsyncModelSerializer):
         def fmt(
                 logs: pd.DataFrame
         ) -> dict:
-            first, last = logs['value'].iloc[[0, -1]]
-            return {
-                'abs': round(last - first, 2),
-                'rel': round((last / first - 1) * 100, 2)
+            value = logs['value']
+            first = value.iloc[0]
+
+            abs = value - first
+            rel = abs / first * 100
+
+            ret = {
+                'abs': round(abs.iloc[-1], 2),
+                'rel': round(rel.iloc[-1], 2)
             }
+
+            neg = rel[rel < 0]
+            if neg.size:
+                ret['avg_loss'] = round(neg.mean(), 2)
+                ret['max_loss'] = round(neg.min(), 2)
+            else:
+                ret['avg_loss'] = 0
+                ret['max_loss'] = 0
+
+            pos = rel[rel > 0]
+            if pos.size:
+                ret['avg_profit'] = round(pos.mean(), 2)
+                ret['max_profit'] = round(pos.max(), 2)
+            else:
+                ret['avg_profit'] = 0
+                ret['max_profit'] = 0
+
+            neg_sum = neg.sum()
+            pos_sum = pos.sum()
+            ret['pli'] = round((pos_sum + neg_sum) / (pos_sum - neg_sum), 2)
+
+            return ret
 
         return {
             'strategies': {
                 strategy: fmt(log.logs.loc[strategy])
-                for strategy in log.logs.index.levels[0]
+                for strategy in log.logs.index
+                .get_level_values(0)
+                .unique()
             },
             'stocks': await log.portfolio.deltas(
                 timeframe=log.timeframe,
@@ -81,7 +110,9 @@ class LogSerializer(AsyncModelSerializer):
         def fmt(
                 logs: pd.DataFrame
         ) -> list[dict]:
-            return logs.set_index(
+            return logs.assign(
+                rel=lambda df: (df['value'] / df['value'].iloc[0] - 1) * 100
+            ).set_index(
                 logs.index.strftime(
                     timeframe_format[log.timeframe]
                 )
@@ -93,7 +124,9 @@ class LogSerializer(AsyncModelSerializer):
 
         return {
             strategy: fmt(log.logs.loc[strategy])
-            for strategy in log.logs.index.levels[0]
+            for strategy in log.logs.index
+            .get_level_values(0)
+            .unique()
         }
 
     @staticmethod
@@ -108,4 +141,6 @@ class LogSerializer(AsyncModelSerializer):
 
     class Meta:
         model = models.Log
-        fields = '__all__'
+        exclude = (
+            '_order',
+        )
