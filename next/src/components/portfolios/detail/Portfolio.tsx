@@ -13,11 +13,13 @@ import {
 } from './actions';
 import {
     dateTimeFormat
-} from '../../../utils/constants';
+} from 'utils/constants';
 import AccountList from './AccountList';
 import StockList from './StockList';
-import Editable from '../../misc/editable/Editable';
-import DeleteIcon from '../../misc/icons/Delete';
+import Editable from 'components/misc/editable/Editable';
+import EditableHinted from 'components/misc/editable/EditableHinted';
+import DeleteIcon from 'components/misc/icons/Delete';
+import Link from 'next/link';
 import styles from './styles.module.css';
 
 export default function Portfolio(
@@ -27,6 +29,7 @@ export default function Portfolio(
         portfolio: Portfolio;
     }
 ) {
+    const [currency, setCurrency] = useState(portfolio.currency);
     const [longLimit, setLongLimit] = useState(portfolio.long_limit);
     const [shortLimit, setShortLimit] = useState(portfolio.short_limit);
 
@@ -110,14 +113,65 @@ export default function Portfolio(
                 </tbody>
             </table>
         </section>
-        <AccountList
-            accounts={portfolio.accounts}
-            portfolio={portfolio.id}
-        />
+        <section>
+            <EditableHinted
+                name="currency"
+                value={currency}
+                setValue={patch('currency', setCurrency)}
+                search={async (query: string) => {
+                    return query ? (await serverRequest(
+                        'stocks/meta/currency',
+                        'POST',
+                        { cache: 'force-cache' },
+                        { query }
+                    )).data as string[] : [];
+                }}
+            >
+                Main currency: {currency}
+            </EditableHinted>
+            <AccountList
+                accounts={portfolio.accounts}
+                portfolio={portfolio.id}
+            />
+        </section>
         <StockList
             instances={portfolio.stocks}
             portfolio={portfolio.id}
         />
-        {/* TODO: logs */}
+        {portfolio.logs.length ? <table>
+            <caption>Logs:</caption>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Portfolio</th>
+                <th>Created</th>
+                <th>Strategies</th>
+            </tr>
+            </thead>
+            <tbody>
+            {portfolio.logs.map(log =>
+                <tr key={log.id}>
+                    <td>
+                        <Link href={`/logs/${log.id}`}>
+                            {log.id}
+                        </Link>
+                    </td>
+                    <td>{log.portfolio}</td>
+                    <td>
+                        <time suppressHydrationWarning>
+                            {dateTimeFormat.format(new Date(
+                                log.create_time
+                            ))}
+                        </time>
+                    </td>
+                    <td>
+                        <pre>
+                            {log.strategies.join(';\n')}
+                        </pre>
+                    </td>
+                </tr>
+            )}
+            </tbody>
+        </table> : null}
     </main>;
 }

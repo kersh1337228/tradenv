@@ -67,7 +67,7 @@ export default function AccountList(
         return errors;
     }, {});
 
-    return <section>
+    return <>
         <details>
             <summary>Add account</summary>
             <form
@@ -120,5 +120,5 @@ export default function AccountList(
             )}
             </tbody>
         </table> : null}
-    </section>;
+    </>;
 }

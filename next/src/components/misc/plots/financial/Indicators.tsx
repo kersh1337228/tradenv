@@ -5,10 +5,10 @@ import {
     SetStateAction,
     useState
 } from 'react';
-import TypedForm from '../../form/TypedForm';
+import TypedForm from 'components/misc/form/TypedForm';
 import {
     serverRequest
-} from '../../../../utils/actions';
+} from 'utils/actions';
 
 export default function Indicators(
     {

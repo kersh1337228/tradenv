@@ -1,6 +1,6 @@
 'use client';
 
-import Pagination from '../../misc/pagination/Pagination';
+import Pagination from 'components/misc/pagination/Pagination';
 import {
     useState,
     useEffect
@@ -12,11 +12,11 @@ import {
 } from 'next/navigation';
 import {
     serverRequest
-} from '../../../utils/actions';
-import HintedField from '../../misc/form/HintedField';
-import TextSearch from '../../misc/form/TextSearch';
-import NumberSearch from '../../misc/form/NumberSearch';
-import HintedList from '../../misc/form/HintedList';
+} from 'utils/actions';
+import HintedField from 'components/misc/form/HintedField';
+import TextSearch from 'components/misc/form/TextSearch';
+import NumberSearch from 'components/misc/form/NumberSearch';
+import HintedList from 'components/misc/form/HintedList';
 import Link from 'next/link';
 import styles from './styles.module.css';
 

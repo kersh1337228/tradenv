@@ -20,9 +20,9 @@ import {
 import TextSearch from 'components/misc/form/TextSearch';
 import NumberSearch from 'components/misc/form/NumberSearch';
 import DateTimeRange from 'components/misc/form/DateTimeRange';
+import PortfolioCreate from './PortfolioCreate';
 import Link from 'next/link';
 import styles from './styles.module.css';
-import PortfolioCreate from './PortfolioCreate';
 
 export default function PortfoliosList(
     {

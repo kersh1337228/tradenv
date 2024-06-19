@@ -9,10 +9,10 @@ import {
 } from 'react';
 import {
     serverRequest
-} from '../../../utils/actions';
-import HintedField from '../../misc/form/HintedField';
-import TextSearch from '../../misc/form/TextSearch';
-import HintedList from '../../misc/form/HintedList';
+} from 'utils/actions';
+import HintedField from 'components/misc/form/HintedField';
+import TextSearch from 'components/misc/form/TextSearch';
+import HintedList from 'components/misc/form/HintedList';
 import Link from 'next/link';
 import styles from './styles.module.css';
 
@@ -211,23 +211,23 @@ export default function StocksSearch(
                                 instances.concat(response.data as StockInstance)
                             );
                             formRef.current?.reset();
-                        }
-
-                        const errors = response.data;
-                        if (
-                            'non_field_errors' in errors
-                            && (errors.non_field_errors as string[]).some(error =>
-                                error.includes('stock')
+                        } else {
+                            const errors = response.data;
+                            if (
+                                'non_field_errors' in errors
+                                && (errors.non_field_errors as string[]).some(error =>
+                                    error.includes('stock')
+                                )
                             )
-                        )
-                            if ('stock' in errors)
-                                errors.stock.push('Stock must be unique per portfolio');
-                            else
-                                errors.stock = ['Stock must be unique per portfolio'];
+                                if ('stock' in errors)
+                                    errors.stock.push('Stock must be unique per portfolio');
+                                else
+                                    errors.stock = ['Stock must be unique per portfolio'];
 
-                        setErrors({
-                            [stock.symbol]: errors.stock
-                        });
+                            setErrors({
+                                [stock.symbol]: errors.stock
+                            });
+                        }
                     }}>Add
                     </td>
                 </tr>

@@ -15,7 +15,7 @@ import {
 } from 'react';
 import {
     randomColor
-} from '../../../../utils/functions';
+} from 'utils/functions';
 
 export default function PlotFinancial(
     {

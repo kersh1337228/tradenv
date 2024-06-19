@@ -7,33 +7,10 @@ import {
     useRef
 } from 'react';
 import TypedField from './TypedField';
+import {
+    serialize
+} from 'utils/functions';
 import styles from './styles.module.css';
-
-type FormField = HTMLInputElement |  HTMLSelectElement | HTMLFieldSetElement;
-
-function serialize(field: FormField): BasicValue | undefined {
-    if (field instanceof HTMLInputElement)
-        switch (field.type) {
-            case 'number':
-                return field.valueAsNumber;
-            case 'text':
-            case 'date':
-            case 'datetime-local':
-                return field.value;
-            case 'checkbox':
-                return field.checked;
-        }
-     else if (field instanceof HTMLSelectElement)
-        return field.multiple ?
-            [...field.options]
-                .filter(opt => opt.selected)
-                .map(opt => opt.value) :
-            field.value;
-    else if (field instanceof HTMLFieldSetElement)
-        return ([...field.elements] as FormField[])
-            .map(serialize)
-            .filter(value => value !== undefined) as BasicValue;
-}
 
 export default function TypedForm(
     {
@@ -65,8 +42,8 @@ export default function TypedForm(
 
     return <form
         action={dispatch}
-        className={styles.form}
         ref={formRef}
+        className={styles.form}
     >
         {Object.entries(fields).map(([name, type]) =>
             <TypedField

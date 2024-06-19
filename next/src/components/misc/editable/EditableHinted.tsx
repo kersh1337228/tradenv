@@ -4,11 +4,11 @@ import {
     ReactNode,
     useState
 } from 'react';
-import HintedField from '../form/HintedField';
-import EditIcon from '../icons/Edit';
-import OKIcon from '../icons/OK';
-import CancelIcon from '../icons/Cancel';
-import DeleteIcon from '../icons/Delete';
+import HintedField from 'components/misc/form/HintedField';
+import EditIcon from 'components/misc/icons/Edit';
+import OKIcon from 'components/misc/icons/OK';
+import CancelIcon from 'components/misc/icons/Cancel';
+import DeleteIcon from 'components/misc/icons/Delete';
 import styles from './styles.module.css';
 
 export default function EditableHinted(

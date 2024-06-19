@@ -17,6 +17,7 @@ export default function Select(
         defaultValue,
         inputRef,
         onChange,
+        multiple = false,
         children
     }: {
         name: string;
@@ -26,6 +27,7 @@ export default function Select(
         defaultValue?: string | number;
         inputRef?: RefObject<HTMLSelectElement>;
         onChange?: ChangeEventHandler<HTMLSelectElement> | undefined;
+        multiple?: boolean;
         children: any;
     }
 ) {
@@ -50,6 +52,7 @@ export default function Select(
             defaultValue={defaultValue}
             ref={inputRef}
             onChange={onChange}
+            multiple={multiple}
         >
             {children}
         </select>

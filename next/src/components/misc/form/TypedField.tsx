@@ -2,7 +2,7 @@ import Select from './Select';
 import TypedList from './TypedList';
 import {
     listRegex
-} from '../../../utils/constants';
+} from 'utils/constants';
 import styles from './styles.module.css';
 
 export default function TypedField(
@@ -124,6 +124,7 @@ export default function TypedField(
                 return match ? <TypedList
                     name={name}
                     type={match.type as BasicType}
+                    label={label}
                     values={value as number[] | string[] | boolean[]}
                 /> : null;
             }

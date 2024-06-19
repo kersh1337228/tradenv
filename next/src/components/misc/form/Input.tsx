@@ -16,7 +16,10 @@ export default function Input(
         required = true,
         defaultValue,
         inputRef,
-        onChange
+        onChange,
+        min,
+        max,
+        step
     }: {
         name: string;
         type: HTMLInputTypeAttribute;
@@ -26,6 +29,9 @@ export default function Input(
         defaultValue?: string | number;
         inputRef?: RefObject<HTMLInputElement>;
         onChange?: ChangeEventHandler<HTMLInputElement> | undefined;
+        min?: number | string;
+        max?: number | string;
+        step?: number;
     }
 ) {
     return <div
@@ -49,6 +55,9 @@ export default function Input(
             required={required}
             ref={inputRef}
             onChange={onChange}
+            min={min}
+            max={max}
+            step={step}
         />
     </div>;
 }

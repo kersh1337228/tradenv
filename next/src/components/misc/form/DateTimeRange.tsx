@@ -1,11 +1,11 @@
-import {
+import React, {
     Dispatch,
     SetStateAction,
     ChangeEvent
 } from 'react';
 import {
     debounce
-} from '../../../utils/functions';
+} from 'utils/functions';
 import styles from './styles.module.css';
 
 export default function DateTimeRange(
@@ -13,16 +13,26 @@ export default function DateTimeRange(
         name,
         start,
         setStart,
+        startMin,
+        startMax,
         end,
         setEnd,
-        label = ''
+        endMin,
+        endMax,
+        label = '',
+        errors
     }: {
         name: string;
         start: string;
         setStart: Dispatch<SetStateAction<string>>;
+        startMin?: string;
+        startMax?: string;
         end: string;
         setEnd: Dispatch<SetStateAction<string>>;
+        endMin?: string;
+        endMax?: string;
         label?: string;
+        errors?: string[];
     }
 ) {
     const handleStart = debounce(
@@ -36,13 +46,25 @@ export default function DateTimeRange(
         }, 300
     );
 
-    return <fieldset className={styles.field}>
+    return <fieldset
+        name={name}
+        className={styles.field}
+    >
         {label ? <legend>{label}</legend> : null}
+        <ul className={styles.errors}>
+            {errors?.map((error, key) =>
+                <li key={key}>
+                    {error}
+                </li>
+            )}
+        </ul>
         <input
             type="datetime-local"
             name={`${name}__start`}
             placeholder={label}
             defaultValue={start}
+            min={startMin}
+            max={startMax}
             onChange={handleStart}
             className={styles.start}
         />
@@ -51,6 +73,8 @@ export default function DateTimeRange(
             name={`${name}__end`}
             placeholder={label}
             defaultValue={end}
+            min={endMin}
+            max={endMax}
             onChange={handleEnd}
             className={styles.end}
         />

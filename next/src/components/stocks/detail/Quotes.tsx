@@ -1,7 +1,7 @@
 import {
     dateTimeFormat
-} from 'src/utils/constants';
-import PlotFinancial from '../../misc/plots/financial/PlotFinantial';
+} from 'utils/constants';
+import PlotFinancial from 'components/misc/plots/financial/PlotFinantial';
 import styles from './styles.module.css';
 
 export default function Quotes(

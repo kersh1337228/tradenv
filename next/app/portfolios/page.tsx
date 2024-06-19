@@ -11,11 +11,11 @@ export const metadata: Metadata = {
 };
 
 export default async function Page() {
-    const response = (await serverRequest(
+    const portfolios = (await serverRequest(
         'portfolios',
         'GET',
         { 'cache': 'force-cache' }
     )).data as PortfolioPartial[];
 
-    return <PortfoliosList portfolios={response}/>;
+    return <PortfoliosList portfolios={portfolios}/>;
 }

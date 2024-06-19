@@ -5,7 +5,7 @@ import {
 } from 'react';
 import {
     debounce
-} from '../../../utils/functions';
+} from 'utils/functions';
 import styles from './styles.module.css';
 
 export default function NumberSearch(

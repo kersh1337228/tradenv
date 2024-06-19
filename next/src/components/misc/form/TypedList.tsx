@@ -19,7 +19,7 @@ export default function TypedList(
         type: BasicType;
         errors?: string[];
         label?: string;
-        values: number[] | string[] | boolean[];
+        values?: number[] | string[] | boolean[];
         required?: boolean;
     }
 ) {
@@ -30,9 +30,9 @@ export default function TypedList(
         fields.push(
             <TypedField
                 key={i}
-                name={`${name}_${i}`}
+                name={`${name}-${i}`}
                 type={type}
-                value={values[i]}
+                value={values ? values[i] : undefined}
                 required={required}
             />
         );

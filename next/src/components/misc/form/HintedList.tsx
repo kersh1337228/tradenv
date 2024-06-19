@@ -11,9 +11,9 @@ import {
 } from 'react';
 import {
     debounce
-} from '../../../utils/functions';
+} from 'utils/functions';
 import styles from './styles.module.css';
-import CancelIcon from '../icons/Cancel';
+import CancelIcon from 'components/misc/icons/Cancel';
 
 export default function HintedList(
     {

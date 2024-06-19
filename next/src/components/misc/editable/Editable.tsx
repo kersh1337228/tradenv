@@ -6,7 +6,7 @@ import {
     useRef,
     useState
 } from 'react';
-import Input from '../form/Input';
+import Input from 'components/misc/form/Input';
 import EditIcon from 'components/misc/icons/Edit';
 import OKIcon from 'components/misc/icons/OK';
 import CancelIcon from 'components/misc/icons/Cancel';

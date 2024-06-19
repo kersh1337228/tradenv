@@ -1,5 +1,5 @@
-import GitHubIcon from '../../misc/icons/GitHub';
-import GitLabIcon from '../../misc/icons/GitLab';
+import GitHubIcon from 'components/misc/icons/GitHub';
+import GitLabIcon from 'components/misc/icons/GitLab';
 import Link from 'next/link';
 import styles from './styles.module.css';
 

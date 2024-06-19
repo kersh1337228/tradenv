@@ -3,6 +3,7 @@ type BasicType = 'int' | 'float' | 'str' | 'bool'
     | number[] | string[];
 type BasicValue = number | string | boolean | null
     | number[] | string[] | boolean[];
+type FormField = HTMLInputElement |  HTMLSelectElement | HTMLFieldSetElement;
 
 type JSONResponse = {
     data: Record<string, any>;
@@ -81,7 +82,7 @@ type Indicator = {
 
 type StockInstance = {
     id: string;
-    stock: StockPartial;
+    stock: StockObject;
     amount: number;
     priority: number;
 };
@@ -115,9 +116,19 @@ type LogPartial = {
     create_time: string;
 };
 
+type Result = {
+    abs: number;
+    rel: number;
+    avg_loss: number;
+    max_loss: number;
+    avg_profit: number;
+    max_profit: number;
+    pli: number;
+};
+
 type Log = {
     id: string;
-    strategies: Record<string, Record<string, BasicValue>>;
+    strategies: [string, Record<string, BasicValue>][];
     portfolio: Portfolio;
     range_start: string;
     range_end: string;
@@ -127,30 +138,18 @@ type Log = {
     logs: Record<string, {
         timestamp: string;
         value: number;
+        rel: number;
         [currencyOrSymbol: string]: number;
     }[]>;
     create_time: string;
     results: {
-        strategies: Record<string, {
-            abs: number;
-            rel: number;
-        }>;
-        stocks: Record<string, {
-            abs: number;
-            rel: number;
-        }>;
+        strategies: Record<string, Result>;
+        stocks: Record<string, Result>;
     };
-    quotes: OHLCV[];
-};
-
-type Args = {
-    [key: string]: 'str' | 'int' | 'float'
-        | 'list[str]' | 'list[int]' | 'list[float]'
-        | string[] | number[]
+    quotes: Record<string, OHLCV[]>;
 };
 
 type Strategy = {
-    verbose_name: string;
-    alias: string;
-    args: Args;
+    verbose_name?: string;
+    params: BasicType;
 };

@@ -1,13 +1,13 @@
 'use client';
 
-import Select from 'src/components/misc/form/Select';
+import Select from 'components/misc/form/Select';
 import Quotes from './Quotes';
 import {
     useState
 } from 'react';
 import {
     serverRequest
-} from 'src/utils/actions';
+} from 'utils/actions';
 import styles from './styles.module.css';
 
 export default function Stock(
