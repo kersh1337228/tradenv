@@ -136,12 +136,15 @@ class Portfolio(models.Model):
             freq=delta
         ).floor(delta).unique()
 
-        def fill(ohlcv: pd.DataFrame) -> pd.DataFrame:
-            ohlcv.index = ohlcv.index.floor(delta).unique()
-            return ohlcv.reindex(rng).ffill().bfill()
+        def fill(
+                ohlcv: pd.DataFrame
+        ) -> pd.DataFrame:
+            return ohlcv.groupby(
+                ohlcv.index.floor(delta)
+            ).first().reindex(rng).ffill().bfill()
 
         items = [
-            (name, fill(ohlcv))
+            (name, fill(ohlcv.loc[range_start:range_end]))
             async for name, ohlcv in Quotes.objects.filter(
                 stock__name__in=forex_names,
                 timeframe=timeframe
@@ -263,12 +266,15 @@ class Portfolio(models.Model):
         ).floor(delta).unique()
         rng.freq = delta
 
-        def fill(ohlcv: pd.DataFrame) -> pd.DataFrame:
-            ohlcv.index = ohlcv.index.floor(delta).unique()
-            return ohlcv.reindex(rng).ffill().bfill()
+        def fill(
+                ohlcv: pd.DataFrame
+        ) -> pd.DataFrame:
+            return ohlcv.groupby(
+                ohlcv.index.floor(delta)
+            ).first().reindex(rng).ffill().bfill()
 
         symbols, quotes = zip(*[
-            (symbol, fill(ohlcv))
+            (symbol, fill(ohlcv.loc[range_start:range_end]))
             async for symbol, ohlcv in self.items(timeframe)
         ])
 
@@ -276,7 +282,7 @@ class Portfolio(models.Model):
             objs=quotes,
             axis=0,
             keys=symbols
-        ).loc[pd.IndexSlice[:, range_start:range_end], :]
+        )
 
     async def to_dict(
             self: Self,

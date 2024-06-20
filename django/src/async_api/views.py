@@ -41,7 +41,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         return Response(
             data={
                 'detail': 'GET method not implemented'
@@ -54,7 +54,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         return Response(
             data={
                 'detail': 'POST method not implemented'
@@ -67,7 +67,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         return Response(
             data={
                 'detail': 'PUT method not implemented'
@@ -80,7 +80,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         return Response(
             data={
                 'detail': 'PATCH method not implemented'
@@ -93,7 +93,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         return Response(
             data={
                 'detail': 'DELETE method not implemented'
@@ -106,7 +106,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         return Response(
             data={
                 'detail': 'HEAD method not implemented'
@@ -120,7 +120,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         if self.metadata_class is None:
             return self.http_method_not_allowed(request, *args, **kwargs)
 
@@ -134,7 +134,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         return Response(
             data={
                 'detail': 'TRACE method not implemented'
@@ -148,7 +148,7 @@ class AsyncAPIView(GenericAPIView):
             request: Request,
             *args,
             **kwargs
-    ):
+    ) -> Coroutine[Any, Any, Response]:
         self.args = args
         self.kwargs = kwargs
         request = self.initialize_request(request, *args, **kwargs)
@@ -177,7 +177,7 @@ class AsyncAPIView(GenericAPIView):
             response: Response,
             *args,
             **kwargs
-    ):
+    ) -> Response:
         if iscoroutine(response):
             response = await response
         assert isinstance(response, HttpResponseBase), (
@@ -234,7 +234,7 @@ def async_api_view(
                 self: Self,
                 *args,
                 **kwargs
-        ) -> Any:
+        ) -> Response:
             return await func(*args, **kwargs)
 
         for method in http_method_names:

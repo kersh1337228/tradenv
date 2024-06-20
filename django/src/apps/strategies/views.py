@@ -1,10 +1,12 @@
 from itertools import repeat
 import multiprocessing
 from typing import override
+from django.views.decorators.cache import cache_page
 from rest_framework import status
 from rest_framework.response import Response
 import pandas as pd
 from src.async_api.views import AsyncAPIView
+from src.async_api.decorators import async_method_decorator
 from .strategies import strategies_data, Environment
 from .utils import (
     task,
@@ -17,6 +19,7 @@ from ..stocks.models import timeframe_delta
 
 class StrategyAPIView(AsyncAPIView):
     @override
+    @async_method_decorator(cache_page(timeout=86400))
     async def get(
             self,
             request,
@@ -113,19 +116,7 @@ class StrategyAPIView(AsyncAPIView):
                     mode=mode
                 )
             ),)
-        t = pd.concat(
-            objs=logs,
-            axis=0,
-            keys=map(
-                lambda pair: f'{pair[0]} ({'; '.join(
-                    map(
-                        lambda param: f'{param[0]}: {param[1]}',
-                        pair[1].items()
-                    )
-                )})',
-                strategies
-            )
-        )
+
         log = await Log.objects.acreate(
             strategies=strategies,
             portfolio=await portfolio.create_snapshot(),

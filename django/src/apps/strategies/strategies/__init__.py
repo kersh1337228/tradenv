@@ -106,6 +106,7 @@ class Environment:
     def finish(
             self: Self
     ) -> None:
+        queue = []
         for i, order in enumerate(self.queue):
             if not order['delay']:
                 if order['payload'] > 0:  # finish buy
@@ -113,9 +114,10 @@ class Environment:
                 else:  # finish sell
                     currency = self.currencies[order['symbol']]
                     self.balance.loc[self.timestamp, currency] -= order['payload']
-                del self.queue[i]
                 continue
             order['delay'] -= 1
+            queue.append(order)
+        self.queue = queue
 
     def increment(
             self: Self
@@ -250,8 +252,8 @@ class Strategy(ABC):
 
     @classmethod
     def as_instance(cls) -> 'Strategy':
-        cls.params = cls.params or signature(cls.__call__)
-        cls.verbose_name = cls.verbose_name or cls.__name__
+        cls.params = cls.params if cls.params is not None else signature(cls.__call__)
+        cls.verbose_name = cls.verbose_name if cls.verbose_name is not None else cls.__name__
         return cls()
 
     @abstractmethod

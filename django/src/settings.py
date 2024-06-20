@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
+from pymemcache import serde
 
 
 BASE_DIR = Path(__file__).resolve().parent
-SECRET_KEY = os.environ.get('SECRET_KEY', "secret_key")
+SECRET_KEY = os.environ.get('SECRET_KEY', 'secret_key')
 DEBUG = bool(os.environ.get('DEBUG', 1))
 
 
@@ -13,17 +14,38 @@ if DEBUG:
     STATIC_ROOT = BASE_DIR.parent.parent / 'next/public/static'
     MEDIA_ROOT = BASE_DIR.parent.parent / 'next/public/media'
     ALLOWED_HOSTS = ('*',)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'
+        }
+    }
 else:
     STATIC_ROOT = '/var/www/static'
     MEDIA_ROOT = '/var/www/media'
     ALLOWED_HOSTS = ('next', 'django')
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.memcached.PyMemcacheCache',
+            'LOCATION': 'memcached:11211',
+            'TIMEOUT': 300,
+            'VERSION': 1,
+            'OPTIONS': {
+                'use_pooling': True,
+                'serde': serde.pickle_serde,
+                'no_delay': True,
+                'ignore_exc': True,
+                'max_pool_size': 4,
+                'default_noreply': False,
+                'allow_unicode_keys': True
+            }
+        }
+    }
 
 
 CORS_ALLOW_HEADERS = ['*']
 CORS_ORIGINS_ALLOW_ALL = True
 CSRF_COOKIE_HTTPONLY = True
 APPEND_SLASH = False
-
 
 INSTALLED_APPS = [
     # default
@@ -47,9 +69,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-    # 'django.middleware.cache.UpdateCacheMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'django.middleware.cache.FetchFromCacheMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -89,34 +109,8 @@ DATABASES = {
 }
 CONN_MAX_AGE = None
 
-# TODO: use memcached
-CACHES = {
-    'default': {
-        'BACKEND': "django.core.cache.backends.dummy.DummyCache",
-        'LOCATION': 'dummy'
-    }
-}
-CACHE_MIDDLEWARE_ALIAS = 'default'
-CACHE_MIDDLEWARE_SECONDS = 300
-CACHE_MIDDLEWARE_KEY_PREFIX = ''
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'  # TODO: set local tz
+TIME_ZONE = 'Europe/Moscow'
 USE_I18N = False
 USE_TZ = False
 

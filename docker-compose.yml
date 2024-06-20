@@ -16,6 +16,8 @@ services:
     depends_on:
       postgres:
         condition: service_started
+      memcached:
+        condition: service_started
 
   next:
     container_name: next
@@ -40,6 +42,16 @@ services:
     volumes:
       - ./postgres/db:/var/lib/postgresql/data
     env_file: ./postgres/.env
+    networks:
+      - backend
+
+  memcached:
+    container_name: memcached
+    image: "memcached:latest"
+    restart: always
+    entrypoint:
+      - memcached
+      - -m 64
     networks:
       - backend
 

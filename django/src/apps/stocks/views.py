@@ -1,8 +1,10 @@
 from typing import override
 from django.db.models import Q
+from django.views.decorators.cache import cache_page
 from rest_framework.response import Response
 from rest_framework import status
 from src.async_api.views import AsyncAPIView
+from src.async_api.decorators import async_method_decorator
 from src.apps.stocks import models
 from src.apps.stocks import serializers
 from src.utils.functions import paginate
@@ -11,6 +13,7 @@ from src.apps.stocks.indicators import indicators_data
 
 class StockMetaAPIView(AsyncAPIView):
     @override
+    @async_method_decorator(cache_page(timeout=86400))
     async def get(
             self,
             request,
@@ -116,6 +119,7 @@ class StockMetaAPIView(AsyncAPIView):
 
 class StockAPIView(AsyncAPIView):
     @override
+    @async_method_decorator(cache_page(timeout=86400))
     async def get(
             self,
             request,
@@ -205,6 +209,7 @@ class StockAPIView(AsyncAPIView):
 
 class QuotesAPIView(AsyncAPIView):
     @override
+    @async_method_decorator(cache_page(timeout=60))
     async def get(
             self,
             request,
@@ -249,6 +254,7 @@ class QuotesAPIView(AsyncAPIView):
 
 class IndicatorAPIView(AsyncAPIView):
     @override
+    @async_method_decorator(cache_page(timeout=86400))
     async def get(
             self,
             request,
