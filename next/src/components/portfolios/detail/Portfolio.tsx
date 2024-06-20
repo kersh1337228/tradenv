@@ -91,6 +91,8 @@ export default function Portfolio(
                             value={longLimit ?? undefined}
                             setValue={patch('long_limit', setLongLimit)}
                             allowDelete={true}
+                            min={0}
+                            step={1}
                         >
                             {longLimit ?? '-'}
                         </Editable>
@@ -105,6 +107,8 @@ export default function Portfolio(
                             value={shortLimit ?? undefined}
                             setValue={patch('short_limit', setShortLimit)}
                             allowDelete={true}
+                            min={0}
+                            step={1}
                         >
                             {shortLimit ?? '-'}
                         </Editable>
@@ -113,7 +117,7 @@ export default function Portfolio(
                 </tbody>
             </table>
         </section>
-        <section>
+        <section className={styles.accounts}>
             <EditableHinted
                 name="currency"
                 value={currency}

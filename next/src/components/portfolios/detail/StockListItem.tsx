@@ -19,14 +19,14 @@ export default function StockListItem(
         setInstances
     }: {
         instance: StockInstance;
-        setInstances:  Dispatch<SetStateAction<StockInstance[]>>;
+        setInstances: Dispatch<SetStateAction<StockInstance[]>>;
     }
 ) {
     const [amount, setAmount] = useState(instance.amount);
     const [priority, setPriority] = useState(instance.priority);
 
     function patch(
-        name: string,
+        name: keyof StockInstance,
         setValue: Dispatch<SetStateAction<any>>,
     ) {
         return async (value: string) => {
@@ -37,8 +37,17 @@ export default function StockListItem(
                 { [name]: value }
             );
 
-            if (response.ok)
-                setValue(response.data[name]);
+            if (response.ok) {
+                const patched = response.data as StockInstance;
+                setValue(patched[name]);
+                setInstances(instances => {
+                    const instances_ = [...instances];
+                    instances_[instances.findIndex(instance_ =>
+                        instance_.id === instance.id
+                    )] = patched;
+                    return instances_;
+                });
+            }
 
             if (
                 'non_field_errors' in response.data
@@ -62,6 +71,8 @@ export default function StockListItem(
                 type="number"
                 value={priority}
                 setValue={patch('priority', setPriority)}
+                min={1}
+                step={1}
             >
                 {priority}
             </Editable>
@@ -89,6 +100,8 @@ export default function StockListItem(
                 type="number"
                 value={amount}
                 setValue={patch('amount', setAmount)}
+                min={1}
+                step={1}
             >
                 {amount}
             </Editable>

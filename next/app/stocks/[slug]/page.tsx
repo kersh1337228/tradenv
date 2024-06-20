@@ -41,7 +41,7 @@ export default async function Page(
     const indicators = (await serverRequest(
         `stocks/indicators`,
         'GET',
-        { cache: 'no-store' }
+        { cache: 'force-cache' }
     )).data as Record<string, IndicatorAvailable>;
 
     return <Stock

@@ -73,7 +73,6 @@ export default function AccountList(
             <form
                 action={dispatch}
                 ref={formRef}
-                className={styles.accountForm}
             >
                 <HintedField
                     name="currency"

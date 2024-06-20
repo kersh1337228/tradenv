@@ -23,7 +23,6 @@ export default function StrategyList(
         errors?: string[];
     }
 ) {
-    console.log(available);
     const [size, setSize] = useState(1);
 
     let fields = [];

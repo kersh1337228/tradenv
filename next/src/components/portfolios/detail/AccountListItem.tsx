@@ -68,6 +68,7 @@ export default function AccountListItem(
                 type="number"
                 value={balance}
                 setValue={patch('balance', setBalance)}
+                min={1}
             >
                 {balance}
             </Editable>

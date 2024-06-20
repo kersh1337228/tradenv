@@ -23,7 +23,10 @@ export default function Editable(
         children,
         onDelete,
         allowDelete = false,
-        allowEdit = true
+        allowEdit = true,
+        min,
+        max,
+        step
     }: {
         name: string;
         type:  HTMLInputTypeAttribute;
@@ -33,6 +36,9 @@ export default function Editable(
         allowDelete?: boolean | null;
         allowEdit?: boolean | null;
         label?: string;
+        min?: number | string;
+        max?: number | string;
+        step?: number;
         children: ReactNode;
     }
 ) {
@@ -50,6 +56,9 @@ export default function Editable(
             defaultValue={value}
             inputRef={inputRef}
             errors={errors}
+            min={min}
+            max={max}
+            step={step}
         />
         <span
             className={styles.row}
@@ -77,7 +86,9 @@ export default function Editable(
                     setEdit(true);
                 }}
             /> : null}
-            {value && (onDelete || allowDelete) ? <DeleteIcon
+            {value !== undefined
+            && value !== null
+            && (onDelete || allowDelete) ? <DeleteIcon
                 onDoubleClick={onDelete ?? (allowDelete ?
                     async () => await setValue(null) : undefined)}
             /> : null}

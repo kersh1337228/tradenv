@@ -1,15 +1,26 @@
-'use server';
-
+'use client';
 
 import CircleDiagram from 'components/misc/plots/circle/CircleDiagram';
 import {
     dateTimeFormat
 } from 'utils/constants';
 import LogResults from './LogResults';
+import DeleteIcon from '../../misc/icons/Delete';
+import {
+    deleteLog
+} from './actions';
 import Link from 'next/link';
 import styles from './styles.module.css';
 
-export default async function Log(
+function format(strategy: string) {
+    return strategy
+        .replaceAll(' ()', '')
+        .replaceAll('(', '(\n ')
+        .replaceAll('; ', ';\n ')
+        .replaceAll(')', '\n)')
+}
+
+export default function Log(
     {
         log
     }: {
@@ -20,13 +31,18 @@ export default async function Log(
         <section className={styles.results}>
             <span className={styles.header}>
                 <h1>Results:</h1>
-                <span className={styles.datetime}>
-                    Created: <time suppressHydrationWarning>
-                        {dateTimeFormat.format(new Date(
-                            log.create_time
-                        ))}
-                    </time>
-                </span>
+                <div className={styles.meta}>
+                    <span className={styles.datetime}>
+                        Created: <time suppressHydrationWarning>
+                            {dateTimeFormat.format(new Date(
+                                log.create_time
+                            ))}
+                        </time>
+                    </span>
+                    <DeleteIcon onDoubleClick={
+                        async () => await deleteLog(log.id)
+                    }/>
+                </div>
             </span>
             <table className="striped">
                 <caption>Strategies:</caption>
@@ -45,7 +61,11 @@ export default async function Log(
                 <tbody>
                 {Object.entries(log.results.strategies).map(([strategy, result]) =>
                     <tr key={strategy}>
-                        <th>{strategy}</th>
+                        <th>
+                            <pre>
+                                {format(strategy)}
+                            </pre>
+                        </th>
                         <td className={
                             result.rel < 0 ?
                                 styles.neg : result.rel > 0 ?
@@ -185,7 +205,7 @@ export default async function Log(
                         <ul>
                             {Object.entries(params).map(([param, value]) =>
                                 <li key={param}>
-                                    <pre>{param}: {value}</pre>
+                                    <pre>{param}: {JSON.stringify(value)}</pre>
                                 </li>
                             )}
                         </ul>

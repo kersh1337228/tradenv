@@ -38,6 +38,7 @@ export default function CircleDiagram(
                 document.body
             ).fontFamily;
             let angle = 0;
+            const len = ~~!!(data.length - 1);
             for (const [name, value] of data) {
                 const wedge = value / sum;
                 // Wedge
@@ -53,8 +54,8 @@ export default function CircleDiagram(
                 ctx.font = `bold ${size}px ${fontFamily}`;
                 const half = angle - wedge * Math.PI;
                 //// Name
-                let x = x0 + 0.5 * r * Math.cos(half),
-                    y = y0 + 0.5 * r * Math.sin(half);
+                let x = x0 + len * 0.5 * r * Math.cos(half),
+                    y = y0 + len * 0.5 * r * Math.sin(half);
                 ctx.strokeText(name, x, y);
                 ctx.fillText(name, x, y);
                 //// Value

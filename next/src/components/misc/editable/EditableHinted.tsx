@@ -72,7 +72,9 @@ export default function EditableHinted(
                     setEdit(true);
                 }}
             /> : null}
-            {value && (onDelete || allowDelete) ? <DeleteIcon
+            {value !== undefined
+            && value !== null
+            && (onDelete || allowDelete) ? <DeleteIcon
                 onDoubleClick={onDelete ?? (allowDelete ?
                     async () => await setValue('') : undefined)}
             /> : null}

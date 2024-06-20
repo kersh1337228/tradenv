@@ -22,6 +22,7 @@ import DateTimeRange from 'components/misc/form/DateTimeRange';
 import Input from 'components/misc/form/Input';
 import StrategyList from './StrategyList';
 import styles from './styles.module.css';
+import { testStrategies } from './actions';
 
 export default function TestForm(
     {
@@ -59,25 +60,20 @@ export default function TestForm(
                 )
         );
 
-        const response = await serverRequest(
-            `strategies`,
-            'POST',
-            { 'cache': 'no-store' },
-            {
-                strategies: Object.entries(strategies_).map(([index, name]) =>
-                    [name, data.strategies[`${name}(${index})`]]
-                ),
-                portfolio: data.portfolio,
-                range_start: data.range__start,
-                range_end: data.range__end,
-                timeframe: data.timeframe,
-                commission: data.commission,
-                mode: data.mode
-            }
-        );
+        const errors = await testStrategies({
+            strategies: Object.entries(strategies_).map(([index, name]) =>
+                [name, data.strategies[`${name}(${index})`]]
+            ),
+            portfolio: data.portfolio,
+            range_start: data.range__start,
+            range_end: data.range__end,
+            timeframe: data.timeframe,
+            commission: data.commission,
+            mode: data.mode
+        });
 
         setLoading(false);
-        return response.data;
+        return errors;
     }, {});
     return <main>
         <form
