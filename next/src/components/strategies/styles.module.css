@@ -1,0 +1,34 @@
+.form {
+    padding: 32px 768px !important;
+}
+
+.form input,
+.form fieldset,
+.form label,
+.form legend {
+    margin: 4px 0;
+}
+
+.strategy {
+    border: 1px solid black;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.strategy label,
+.strategy legend {
+    text-align: left;
+    padding-left: 4px;
+}
+
+@media (max-width: 1700px) {
+    .form {
+        padding: 0 512px !important;
+    }
+}
+
+@media (max-width: 1300px) {
+    .form {
+        padding: 0 32px !important;
+    }
+}

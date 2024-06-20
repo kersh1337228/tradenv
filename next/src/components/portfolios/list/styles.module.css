@@ -1,0 +1,33 @@
+.double {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 0 16px;
+}
+
+.double *:nth-child(odd) {
+    grid-column-start: 1;
+    grid-column-end: 2;
+}
+
+.double *:nth-child(even) {
+    grid-column-start: 2;
+    grid-column-end: 3;
+}
+
+.details {
+    margin: 0 auto;
+    width: max-content;
+    text-align: center;
+}
+
+.details summary {
+    padding: 16px;
+}
+
+.list {
+    margin: 0 auto;
+}
+
+.list tr:nth-child(even) {
+    background: #ededee;
+}

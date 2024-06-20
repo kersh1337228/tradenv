@@ -15,6 +15,7 @@ import {
     randomColor
 } from 'utils/functions';
 import Select from 'components/misc/form/Select';
+import styles from './styles.module.css';
 
 export default function LogResults(
     {
@@ -27,22 +28,24 @@ export default function LogResults(
 ) {
     const [vfield, setVfield] = useState('rel');
 
-    return <div>
-        <Select
-            name="vfield"
-            label="Field shown on chart"
-            defaultValue={vfield}
-            onChange={event => setVfield(event.target.value)}
-        >
-            {Object.keys(Object.values(logs)[0][0]).map(field =>
-                field !== 'timestamp' ? <option
-                    key={field}
-                    value={field}
-                >
-                    {field}
-                </option> : null
-            )}
-        </Select>
+    return <div className={styles.logs}>
+        <div className={styles.vfield}>
+            <Select
+                name="vfield"
+                label="Field on chart"
+                defaultValue={vfield}
+                onChange={event => setVfield(event.target.value)}
+            >
+                {Object.keys(Object.values(logs)[0][0]).map(field =>
+                    field !== 'timestamp' ? <option
+                        key={field}
+                        value={field}
+                    >
+                        {field}
+                    </option> : null
+                )}
+            </Select>
+        </div>
         <Figure
             width={1280}
             height={256 * (1 + Object.keys(quotes).length)}

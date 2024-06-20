@@ -1,12 +1,12 @@
 'use client';
 
-import Link from 'next/link';
 import {
     usePathname
 } from 'next/navigation';
 import {
     useState
 } from 'react';
+import Link from 'next/link';
 import styles from './styles.module.css';
 
 const menu = [{
@@ -51,30 +51,22 @@ export default function Header() {
     return <header
         className={styles.header}
     >
-        <div
-            className={styles.placeholder}
-        >
-        </div>
-        <div
-            className={styles.inner}
-        >
-            <nav>
-                <ul
-                    className={styles.mainMenu}
+        <nav>
+            <ul
+                className={styles.mainMenu}
+            >
+                {menuItems}
+            </ul>
+            <div className={styles.additionalMenu}>
+                <h1
+                    onClick={(_) => setActive(active => !active)}
                 >
+                    Menu
+                </h1>
+                {active ? <ul>
                     {menuItems}
-                </ul>
-                <div className={styles.additionalMenu}>
-                    <h1
-                        onClick={(_) => setActive(active => !active)}
-                    >
-                        Menu
-                    </h1>
-                    {active ? <ul>
-                        {menuItems}
-                    </ul> : null}
-                </div>
-            </nav>
-        </div>
+                </ul> : null}
+            </div>
+        </nav>
     </header>;
 }

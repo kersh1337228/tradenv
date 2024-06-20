@@ -73,6 +73,7 @@ export default function AccountList(
             <form
                 action={dispatch}
                 ref={formRef}
+                className={styles.accountForm}
             >
                 <HintedField
                     name="currency"
@@ -96,7 +97,9 @@ export default function AccountList(
                     type="number"
                     errors={formState.balance}
                     required={true}
-                    defaultValue={0}
+                    defaultValue={1}
+                    min={1}
+                    step={0.1}
                 />
                 <button type="submit">Add</button>
             </form>

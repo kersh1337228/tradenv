@@ -124,7 +124,7 @@ export default function LogList(
 
     return <main>
         <section>
-            <form>
+            <form className={styles.double}>
                 <DateTimeRange
                     name="range_start"
                     label="Test range start"
@@ -186,7 +186,7 @@ export default function LogList(
             </form>
         </section>
         <section>
-            {logs_.length ? <table>
+            {logs_.length ? <table className={styles.list}>
                 <thead>
                 <tr>
                     <th>ID</th>

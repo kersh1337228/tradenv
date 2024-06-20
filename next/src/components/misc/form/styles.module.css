@@ -1,0 +1,86 @@
+.field {
+    display: table;
+    width: 100%;
+}
+
+.errors {
+    list-style: '- ';
+    margin: 0 16px;
+    color: red;
+}
+
+.errors li::selection {
+    background: red;
+    color: white;
+}
+
+.double {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.left {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    border-radius: 8px 0 0 8px !important;
+    border-right: 1px solid black;
+    text-align: left;
+}
+
+.right {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    border-radius: 0 8px 8px 0 !important;
+    border-left: 1px solid black;
+    text-align: right;
+}
+
+.listControls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: max-content;
+    margin: 0 auto;
+}
+
+.add,
+.del {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #ededee;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    border-radius: 20px;
+    padding: 4px;
+    margin: 4px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16pt;
+    transition: 0.3s;
+}
+
+.add:hover,
+.del:hover {
+    background: black;
+    color: white;
+}
+
+.add {
+    grid-column-start: 1;
+    grid-column-end: 2;
+}
+
+.add:before {
+    content: '+';
+}
+
+.del {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    align-items: flex-end;
+}
+
+.del:before {
+    content: '-';
+}

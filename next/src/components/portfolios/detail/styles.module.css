@@ -1,0 +1,95 @@
+.portfolio {
+    padding: 0 128px;
+}
+
+.portfolio table caption {
+    text-align: left;
+}
+
+.portfolio table tr:nth-child(even) {
+    background: #ededee;
+}
+
+.portfolio form {
+    padding: 0 !important;
+}
+
+.portfolio summary {
+    padding: 8px 0;
+}
+
+.header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    border-bottom: 1px solid black;
+}
+
+.name {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 32px;
+}
+
+.name h1 {
+    font-size: 32pt;
+}
+
+.datetime {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: right;
+    gap: 4px;
+    font-size: 10pt;
+    opacity: 0.7;
+}
+
+.accountForm {
+    width: 25%;
+}
+
+.stockSearch {
+    padding: 8px;
+    border: 1px solid black;
+    border-radius: 8px;
+}
+
+.stockForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 0 16px;
+    margin: 0 auto;
+    width: 50%;
+}
+
+.structure {
+    width: max-content;
+}
+
+.structure figcaption {
+    font-size: 16pt;
+    text-align: center;
+    font-weight: bold;
+    padding: 8px 0;
+}
+
+.left {
+    grid-column-start: 1;
+    grid-column-end: 2 ;
+}
+
+.right {
+    grid-column-start: 2;
+    grid-column-end: 3;
+}
+
+.stockForm button {
+    grid-column-start: 1;
+    grid-column-end: 3;
+}
+
+.logs {
+    width: 100%;
+}

@@ -6,6 +6,7 @@ import {
 import StockListItem from './StockListItem';
 import StocksSearch from './StockSearch';
 import CircleDiagram from 'components/misc/plots/circle/CircleDiagram';
+import styles from './styles.module.css';
 
 export default function StockList(
     {
@@ -53,7 +54,7 @@ export default function StockList(
                 )}
                 </tbody>
             </table>
-            <figure>
+            <figure className={styles.structure}>
                 <figcaption>Structure</figcaption>
                 <CircleDiagram
                     data={instances_.map(instance =>

@@ -135,62 +135,66 @@ export default function StocksList(
 
     return <main>
         <section>
-            <form>
-                <TextSearch
-                    name="symbol_or_name"
-                    label="Symbol or Name"
-                    value={symbolOrName}
-                    setValue={setSymbolOrName}
-                />
-                <HintedList
-                    name="types"
-                    label="Types"
-                    values={types}
-                    setValues={setTypes}
-                    search={stockMeta('type')}
-                />
-                <HintedField
-                    name="exchange"
-                    label="Exchange"
-                    value={exchange}
-                    setValue={setExchange}
-                    search={stockMeta('exchange')}
-                />
-                <HintedField
-                    name="timezone"
-                    label="Timezone"
-                    value={timezone}
-                    setValue={setTimezone}
-                    search={stockMeta('timezone')}
-                />
-                <HintedField
-                    name="country"
-                    label="Country"
-                    value={country}
-                    setValue={setCountry}
-                    search={stockMeta('country')}
-                />
-                <HintedField
-                    name="currency"
-                    label="Currency"
-                    value={currency}
-                    setValue={setCurrency}
-                    search={stockMeta('currency')}
-                />
-                <HintedField
-                    name="sector"
-                    label="Sector"
-                    value={sector}
-                    setValue={setSector}
-                    search={stockMeta('sector')}
-                />
-                <HintedField
-                    name="industry"
-                    label="Industry"
-                    value={industry}
-                    setValue={setIndustry}
-                    search={stockMeta('industry')}
-                />
+            <form className={styles.form}>
+                <div className={styles.left}>
+                    <TextSearch
+                        name="symbol_or_name"
+                        label="Symbol or Name"
+                        value={symbolOrName}
+                        setValue={setSymbolOrName}
+                    />
+                    <HintedList
+                        name="types"
+                        label="Types"
+                        values={types}
+                        setValues={setTypes}
+                        search={stockMeta('type')}
+                    />
+                    <HintedField
+                        name="exchange"
+                        label="Exchange"
+                        value={exchange}
+                        setValue={setExchange}
+                        search={stockMeta('exchange')}
+                    />
+                    <HintedField
+                        name="timezone"
+                        label="Timezone"
+                        value={timezone}
+                        setValue={setTimezone}
+                        search={stockMeta('timezone')}
+                    />
+                </div>
+                <div className={styles.right}>
+                    <HintedField
+                        name="country"
+                        label="Country"
+                        value={country}
+                        setValue={setCountry}
+                        search={stockMeta('country')}
+                    />
+                    <HintedField
+                        name="currency"
+                        label="Currency"
+                        value={currency}
+                        setValue={setCurrency}
+                        search={stockMeta('currency')}
+                    />
+                    <HintedField
+                        name="sector"
+                        label="Sector"
+                        value={sector}
+                        setValue={setSector}
+                        search={stockMeta('sector')}
+                    />
+                    <HintedField
+                        name="industry"
+                        label="Industry"
+                        value={industry}
+                        setValue={setIndustry}
+                        search={stockMeta('industry')}
+                    />
+                </div>
                 <NumberSearch
                     name="limit"
                     label="Limit"
@@ -201,7 +205,7 @@ export default function StocksList(
         </section>
         <section>
             {stocks_.length ? <>
-                <table>
+            <table className={styles.list}>
                     <thead>
                     <tr>
                         <th>Symbol</th>

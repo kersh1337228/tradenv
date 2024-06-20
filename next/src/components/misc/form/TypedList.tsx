@@ -37,7 +37,7 @@ export default function TypedList(
             />
         );
 
-    return <fieldset name={name}>
+    return <fieldset name={name} className={styles.field}>
         {label ? <legend>{label}</legend> : null}
         <ul className={styles.errors}>
             {errors?.map((error, key) =>
@@ -47,11 +47,15 @@ export default function TypedList(
             )}
         </ul>
         {fields}
-        <span onClick={() => setSize(size => size + 1)}>
-            +
-        </span>
-        {size > 1 ? <span onClick={() => setSize(size => size - 1)}>
-            -
-        </span> : null}
+        <div className={styles.listControls}>
+            <span
+                onClick={() => setSize(size => size + 1)}
+                className={styles.add}
+            ></span>
+            {size > 1 ? <span
+                onClick={() => setSize(size => size - 1)}
+                className={styles.del}
+            ></span> : null}
+        </div>
     </fieldset>;
 }

@@ -1,0 +1,34 @@
+.indicators {
+
+}
+
+.indicators form {
+    padding: 0 !important;
+    width: 50%;
+}
+
+.available,
+.calculated {
+    cursor: pointer;
+}
+
+.calculated {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.availableSelected,
+.calculatedSelected {
+    color: white;
+    background: black;
+    cursor: default;
+    padding: 4px;
+}
+
+.calculatedSelected {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+

@@ -25,7 +25,7 @@ export default function Stock(
     const [quotes, setQuotes] = useState<QuotesObject>();
     const [timeframe, setTimeframe] = useState(timeframes[0]);
 
-    return <main>
+    return <main className={styles.stock}>
         <section>
             <h1>Information</h1>
             <table>

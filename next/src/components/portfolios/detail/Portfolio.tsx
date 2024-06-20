@@ -52,9 +52,9 @@ export default function Portfolio(
         };
     }
 
-    return <main>
-        <section>
-            <span>
+    return <main className={styles.portfolio}>
+        <section className={styles.header}>
+            <span className={styles.name}>
                 <h1>{portfolio.name}</h1>
                 <DeleteIcon
                     onDoubleClick={async () =>
@@ -62,7 +62,7 @@ export default function Portfolio(
                     }
                 />
             </span>
-            <div>
+            <div className={styles.datetime}>
                 <span>
                     Created: <time suppressHydrationWarning>
                         {dateTimeFormat.format(new Date(
@@ -138,40 +138,42 @@ export default function Portfolio(
             instances={portfolio.stocks}
             portfolio={portfolio.id}
         />
-        {portfolio.logs.length ? <table>
-            <caption>Logs:</caption>
-            <thead>
-            <tr>
-                <th>ID</th>
-                <th>Portfolio</th>
-                <th>Created</th>
-                <th>Strategies</th>
-            </tr>
-            </thead>
-            <tbody>
-            {portfolio.logs.map(log =>
-                <tr key={log.id}>
-                    <td>
-                        <Link href={`/logs/${log.id}`}>
-                            {log.id}
-                        </Link>
-                    </td>
-                    <td>{log.portfolio}</td>
-                    <td>
-                        <time suppressHydrationWarning>
-                            {dateTimeFormat.format(new Date(
-                                log.create_time
-                            ))}
-                        </time>
-                    </td>
-                    <td>
+        <section>
+            {portfolio.logs.length ? <table className={styles.logs}>
+                <caption>Logs:</caption>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Portfolio</th>
+                    <th>Created</th>
+                    <th>Strategies</th>
+                </tr>
+                </thead>
+                <tbody>
+                {portfolio.logs.map(log =>
+                    <tr key={log.id}>
+                        <td>
+                            <Link href={`/logs/${log.id}`}>
+                                {log.id}
+                            </Link>
+                        </td>
+                        <td>{log.portfolio}</td>
+                        <td>
+                            <time suppressHydrationWarning>
+                                {dateTimeFormat.format(new Date(
+                                    log.create_time
+                                ))}
+                            </time>
+                        </td>
+                        <td>
                         <pre>
                             {log.strategies.join(';\n')}
                         </pre>
-                    </td>
-                </tr>
-            )}
-            </tbody>
-        </table> : null}
+                        </td>
+                    </tr>
+                )}
+                </tbody>
+            </table> : null}
+        </section>
     </main>;
 }

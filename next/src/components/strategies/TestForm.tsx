@@ -21,6 +21,7 @@ import Select from 'components/misc/form/Select';
 import DateTimeRange from 'components/misc/form/DateTimeRange';
 import Input from 'components/misc/form/Input';
 import StrategyList from './StrategyList';
+import styles from './styles.module.css';
 
 export default function TestForm(
     {
@@ -82,7 +83,7 @@ export default function TestForm(
         <form
             action={dispatch}
             ref={formRef}
-            id="test_form"
+            className={styles.form}
         >
             {portfolios.length ? <Select
                 name="portfolio"

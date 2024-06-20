@@ -1,0 +1,28 @@
+.form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 0 16px;
+}
+
+.left {
+    grid-column-start: 1 !important;
+    grid-column-end: 2 !important;
+}
+
+.right {
+    grid-column-start: 2 !important;
+    grid-column-end: 3 !important;
+}
+
+.form div {
+    grid-column-start: 1;
+    grid-column-end: 3;
+}
+
+.list {
+    margin: 0 auto;
+}
+
+.list tr:nth-child(even) {
+    background: #ededee;
+}

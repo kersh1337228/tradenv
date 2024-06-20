@@ -1,5 +1,6 @@
-.section {
-    padding: 64px 256px;
+.section:nth-child(1) {
+    background: black;
+    color: white;
 }
 
 .sectionHeader {
@@ -22,16 +23,4 @@
 
 .section a {
     font-weight: bold;
-}
-
-@media (max-width: 1400px) {
-    .section {
-        padding: 64px 128px;
-    }
-}
-
-@media (max-width: 900px) {
-    .section {
-        padding: 32px;
-    }
 }

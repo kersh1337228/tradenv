@@ -1,0 +1,94 @@
+.log {
+    padding: 0 128px;
+}
+
+.log h1 {
+    font-size: 16pt;
+}
+
+.log table caption {
+    text-align: left;
+}
+
+.header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.datetime {
+    font-size: 10pt;
+    opacity: 0.7;
+}
+
+.neg {
+    color: red;
+}
+
+.pos {
+    color: green;
+}
+
+.net {
+    color: orange;
+}
+
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.results table {
+    width: max-content;
+}
+
+.row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 32px;
+}
+
+.row table {
+    height: max-content;
+}
+
+.logs {
+    width: 75%;
+}
+
+.vfield {
+    width: 10%;
+}
+
+.vfield label {
+    text-align: left;
+}
+
+.strategies li {
+    padding: 8px 0;
+    padding-left: 8px;
+}
+
+.portfolio {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.portfolio table {
+    width: max-content;
+}
+
+.portfolio figure {
+    width: max-content;
+}
+
+.portfolio figure figcaption {
+    font-size: 16pt;
+    text-align: center;
+    font-weight: bold;
+    padding: 8px 0;
+}

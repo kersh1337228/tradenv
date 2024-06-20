@@ -7,7 +7,8 @@ import {
 } from 'react'
 import Select from 'components/misc/form/Select';
 import TypedField from 'components/misc/form/TypedField';
-import styles from 'components/misc/form/styles.module.css';
+import formStyles from 'components/misc/form/styles.module.css';
+import styles from './styles.module.css';
 
 export default function StrategyList(
     {
@@ -22,6 +23,7 @@ export default function StrategyList(
         errors?: string[];
     }
 ) {
+    console.log(available);
     const [size, setSize] = useState(1);
 
     let fields = [];
@@ -30,6 +32,7 @@ export default function StrategyList(
         fields.push(<fieldset
             key={i}
             name={`strategies-${i}`}
+            className={styles.strategy}
         >
             <Select
                 name={`strategies-${i}-select`}
@@ -59,7 +62,6 @@ export default function StrategyList(
                      // @ts-ignore
                      format="dict"
                  >
-                     <legend>{strategy.verbose_name ?? strategies[i]}</legend>
                      {Object.entries(strategy.params).map(([param, type]) =>
                          <TypedField
                              key={param}
@@ -69,7 +71,7 @@ export default function StrategyList(
                              required={true}
                          />
                      )}
-                </fieldset>;
+                </fieldset>
             </> : null}
         </fieldset>);
     }
@@ -80,7 +82,7 @@ export default function StrategyList(
         format="dict"
     >
         <legend>Strategies</legend>
-        <ul className={styles.errors}>
+        <ul className={formStyles.errors}>
             {errors?.map((error, key) =>
                 <li key={key}>
                     {error}
@@ -88,17 +90,21 @@ export default function StrategyList(
             )}
         </ul>
         {fields}
-        <span onClick={() => setSize(size => size + 1)}>
-            +
-        </span>
-        {size > 1 ? <span onClick={() => {
-            setSize(size => size - 1);
-            setStrategies(strategies => {
-                const { [size - 1]: _, ...strategies_ } = strategies;
-                return strategies_;
-            });
-        }}>
-            -
-        </span> : null}
+        <div className={formStyles.listControls}>
+            <span
+                onClick={() => setSize(size => size + 1)}
+                className={formStyles.add}
+            ></span>
+            {size > 1 ? <span
+                onClick={() => {
+                    setSize(size => size - 1);
+                    setStrategies(strategies => {
+                        const { [size - 1]: _, ...strategies_ } = strategies;
+                        return strategies_;
+                    });
+                }}
+                className={formStyles.del}
+            ></span> : null}
+        </div>
     </fieldset>;
 }

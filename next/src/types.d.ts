@@ -1,8 +1,10 @@
 type BasicType = 'int' | 'float' | 'str' | 'bool'
     | 'list[int]' | 'list[float]' | 'list[str]' | 'list[bool]'
     | number[] | string[];
+
 type BasicValue = number | string | boolean | null
     | number[] | string[] | boolean[];
+
 type FormField = HTMLInputElement |  HTMLSelectElement | HTMLFieldSetElement;
 
 type JSONResponse = {

@@ -1,0 +1,13 @@
+.pagination {
+    padding: 16px;
+    text-align: center;
+}
+
+.pagination li {
+    cursor: pointer;
+}
+
+.current {
+    font-weight: bold;
+    cursor: default !important;
+}

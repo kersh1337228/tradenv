@@ -1,0 +1,40 @@
+.stock {
+    padding: 0 256px;
+}
+
+.stock section h1 {
+    font-size: 16pt;
+    padding: 8px 0 8px 4px;
+}
+
+.stock table {
+    margin: 16px 0 !important;
+}
+
+.stock table caption {
+    text-align: left;
+}
+
+.stock table tr:nth-child(even) {
+    background: #ededee;
+}
+
+.neg {
+    color: red;
+}
+
+.pos {
+    color: green;
+}
+
+.net {
+    color: orange;
+}
+
+.datetime {
+    display: block;
+    font-size: 10pt;
+    width: 100%;
+    text-align: right;
+    opacity: 0.5;
+}

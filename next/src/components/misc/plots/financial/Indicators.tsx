@@ -9,6 +9,8 @@ import TypedForm from 'components/misc/form/TypedForm';
 import {
     serverRequest
 } from 'utils/actions';
+import styles from './styles.module.css';
+import DeleteIcon from '../../icons/Delete';
 
 export default function Indicators(
     {
@@ -32,7 +34,7 @@ export default function Indicators(
         } | Indicator
     >();
 
-    return <details>
+    return <details className={styles.indicators}>
         <summary>Indicators:</summary>
         <div>
             <details>
@@ -45,6 +47,12 @@ export default function Indicators(
                                 name,
                                 ...indicator
                             })}
+                            className={
+                                selected
+                                && !('data' in selected)
+                                && selected?.name === name ?
+                                    styles.availableSelected : styles.available
+                            }
                         >
                             {indicator.verbose_name}
                         </li>
@@ -58,20 +66,22 @@ export default function Indicators(
                         <li
                             key={indicator.name}
                             onClick={() => setSelected(indicator)}
+                            className={
+                                selected
+                                && 'data' in selected
+                                && selected?.verbose_name === indicator.verbose_name ?
+                                    styles.calculatedSelected : styles.calculated
+                            }
                         >
-                            <ul>
-                                <li>{indicator.verbose_name}</li>
-                                <li onClick={() => {
-                                    setSelected(undefined);
-                                    setIndicators(
-                                        indicators => indicators.filter(indicator_ =>
-                                            indicator_.verbose_name !== indicator.verbose_name
-                                        )
+                            <h6>{indicator.verbose_name}</h6>
+                            <DeleteIcon onDoubleClick={() => {
+                                setSelected(undefined);
+                                setIndicators(
+                                    indicators => indicators.filter(indicator_ =>
+                                        indicator_.verbose_name !== indicator.verbose_name
                                     )
-                                }}>
-                                    Remove
-                                </li>
-                            </ul>
+                                )
+                            }}/>
                         </li>
                     )}
                 </ul>

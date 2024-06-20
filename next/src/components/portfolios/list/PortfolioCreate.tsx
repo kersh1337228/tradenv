@@ -64,7 +64,7 @@ export default function PortfolioCreate(
         return errors;
     }, {});
 
-    return <details>
+    return <details className={styles.details}>
         <summary>Add portfolio</summary>
         <form
             action={dispatch}

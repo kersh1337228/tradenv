@@ -16,11 +16,8 @@ tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {
 body {
     display: flex;
     flex-direction: column;
-
     height: 100vh;
-    /*color: white;*/
-    /*background: #272822;*/
-    background: #ededee;
+    background: white;
 }
 
 main {
@@ -70,13 +67,13 @@ p {
 /* _________________|SELECTION|_________________ */
 
 ::selection {
-    background: #53e9b5;
-    color: black;
+    background: black;
+    color: white;
 }
 
 ::-moz-selection {
-    background: #53e9b5;
-    color: black;
+    background: black;
+    color: white;
 }
 
 /* _________________|SCROLLBAR|_________________ */
@@ -86,7 +83,7 @@ p {
 }
 
 ::-webkit-scrollbar-track {
-    background-color: inherit;
+    background-color: black;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -97,5 +94,140 @@ p {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background-color: #53e9b5;
+    background-color: white;
+}
+
+
+
+section {
+    padding: 32px 256px;
+}
+
+table {
+    border-spacing: 0 8px;
+}
+
+.striped tr:nth-child(even) {
+    background: #ededee;
+}
+
+thead th {
+    border-bottom: 1px solid black;
+    padding-bottom: 4px;
+}
+
+th, td {
+    text-align: left;
+    padding: 2px 16px;
+}
+
+form {
+    padding: 0 512px;
+}
+
+label, legend {
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
+input {
+    font-family: inherit;
+    display: table-cell;
+    vertical-align: middle;
+    padding: 4px;
+    margin: 8px 0;
+    border: none;
+    background: #ededee;
+    border-radius: 8px;
+    outline: none;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+datalist {
+    display: none;
+    margin-top: -8px;
+    background: #ededee;
+    border-radius: 0 0 7px 7px;
+    border-top: none;
+    box-sizing: border-box;
+    padding: 4px 0;
+    max-height: 10rem;
+    overflow-y: auto
+}
+
+datalist option {
+    padding: 4px;
+    color: black;
+    margin-bottom: 1px;
+    cursor: pointer;
+}
+
+datalist option:hover {
+    background-color: black;
+    color: white;
+}
+
+select {
+    display: table-cell;
+    width: 100%;
+    background: #ededee;
+    color: black;
+    cursor: pointer;
+    padding: 4px 6px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 8px;
+    outline: none;
+    box-sizing: border-box;
+    transition: 0.3s;
+}
+
+select:hover {
+    background: black;
+    color: white;
+}
+
+select:active {
+    border-radius: 8px 8px 0 0;
+    background: #ededee;
+    color: black;
+}
+
+button {
+    width: 100%;
+    color: black;
+    background: #ededee;
+    padding: 4px;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    border-radius: 7px;
+    transition: 0.1s;
+}
+
+button:hover {
+    background: black;
+    color: white;
+}
+
+@media (max-width: 1700px) {
+    section {
+        padding: 32px 128px;
+    }
+
+    form {
+        padding: 0 384px;
+    }
+}
+
+@media (max-width: 1300px) {
+    section {
+        padding: 32px;
+    }
+
+    form {
+        padding: 0 32px;
+    }
 }

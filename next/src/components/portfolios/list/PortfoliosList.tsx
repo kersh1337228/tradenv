@@ -131,23 +131,25 @@ export default function PortfoliosList(
                     end={updateTimeEnd}
                     setEnd={setUpdateTimeEnd}
                 />
-                <NumberSearch
-                    name="offset"
-                    label="Offset"
-                    value={offset}
-                    setValue={setOffset}
-                />
-                <NumberSearch
-                    name="limit"
-                    label="Limit"
-                    value={limit}
-                    setValue={setLimit}
-                />
+                <fieldset className={styles.double}>
+                    <NumberSearch
+                        name="offset"
+                        label="Offset"
+                        value={offset}
+                        setValue={setOffset}
+                    />
+                    <NumberSearch
+                        name="limit"
+                        label="Limit"
+                        value={limit}
+                        setValue={setLimit}
+                    />
+                </fieldset>
             </form>
         </section>
         <section>
             {portfolios_.length ? <>
-                <table>
+                <table className={styles.list}>
                     <thead>
                     <tr>
                         <th>Name</th>

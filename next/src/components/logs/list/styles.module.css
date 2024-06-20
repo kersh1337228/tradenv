@@ -1,0 +1,19 @@
+.double {
+    padding: 0 384px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 0 16px;
+}
+
+.double fieldset {
+    grid-column-start: 1;
+    grid-column-end: 3;
+}
+
+.list {
+    margin: 0 auto;
+}
+
+.list tr:nth-child(even) {
+    background: #ededee;
+}

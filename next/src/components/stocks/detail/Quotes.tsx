@@ -22,7 +22,7 @@ export default function Quotes(
             styles.neg : styles.net;
 
     return <div>
-        <span>
+        <span className={styles.datetime}>
             Updated: <time suppressHydrationWarning>
                 {dateTimeFormat.format(new Date(
                     quotes.update_time
@@ -39,6 +39,8 @@ export default function Quotes(
                 <th>Low</th>
                 <th>Close</th>
                 <th>Volume</th>
+                <th>Change, %</th>
+                <th>Change, {stock.currency}</th>
             </tr>
             </thead>
             <tbody>
@@ -55,21 +57,8 @@ export default function Quotes(
                 <td className={style}>{quotes.tendency.ohlcv.low}</td>
                 <td className={style}>{quotes.tendency.ohlcv.close}</td>
                 <td className={style}>{quotes.tendency.ohlcv.volume}</td>
-            </tr>
-            </tbody>
-        </table>
-        <table>
-            <caption>Latest change</caption>
-            <thead>
-            <tr>
-                <th>{stock.currency}</th>
-                <th>%</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td className={style}>{quotes.tendency.abs}</td>
                 <td className={style}>{quotes.tendency.rel}</td>
+                <td className={style}>{quotes.tendency.abs}</td>
             </tr>
             </tbody>
         </table>

@@ -48,7 +48,7 @@ export default function DateTimeRange(
 
     return <fieldset
         name={name}
-        className={styles.field}
+        className={styles.double}
     >
         {label ? <legend>{label}</legend> : null}
         <ul className={styles.errors}>
@@ -66,7 +66,7 @@ export default function DateTimeRange(
             min={startMin}
             max={startMax}
             onChange={handleStart}
-            className={styles.start}
+            className={styles.left}
         />
         <input
             type="datetime-local"
@@ -76,7 +76,7 @@ export default function DateTimeRange(
             min={endMin}
             max={endMax}
             onChange={handleEnd}
-            className={styles.end}
+            className={styles.right}
         />
     </fieldset>;
 }
