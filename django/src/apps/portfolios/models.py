@@ -48,7 +48,7 @@ class Portfolio(models.Model):
 
     long_limit = models.PositiveSmallIntegerField(  # Max simultaneous longs
         validators=(
-            MinValueValidator(1),
+            MinValueValidator(0),
         ),
         default=None,
         null=True,
@@ -56,7 +56,7 @@ class Portfolio(models.Model):
     )
     short_limit = models.PositiveSmallIntegerField(  # Max simultaneous shorts
         validators=(
-            MinValueValidator(1),
+            MinValueValidator(0),
         ),
         default=None,
         null=True,

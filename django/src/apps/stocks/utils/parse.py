@@ -111,7 +111,7 @@ async def parse(
            'name': name,
            'exchange': exchange,
            'country': country
-        } | chart_task.result() | search_task.result()
+        } | search_task.result() | chart_task.result()
     ))
 
 

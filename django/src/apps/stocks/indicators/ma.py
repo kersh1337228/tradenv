@@ -31,11 +31,11 @@ def sma(
     verbose_name='Exponential Moving Average'
 )
 def ema(
-        quotes: pd.DataFrame,
+        ohlcv: pd.DataFrame,
         period_length: int,
         price: Literal['open', 'high', 'low', 'close'] = 'close'
 ) -> pd.DataFrame:
-    prices = quotes[price].to_numpy()
+    prices = ohlcv[price].to_numpy()
     q = (period_length - 1) / (period_length + 1)
     return pd.DataFrame(
         data={
@@ -49,17 +49,17 @@ def ema(
                 )(np.arange(period_length, prices.size))
             ))
         },
-        index=quotes.index
+        index=ohlcv.index
     )
 
 
 def wma(
-    quotes: pd.DataFrame,
-    period_length: int,
-    price: Literal['open', 'high', 'low', 'close'],
-    weights: np.ndarray
+        ohlcv: pd.DataFrame,
+        period_length: int,
+        price: Literal['open', 'high', 'low', 'close'],
+        weights: np.ndarray
 ) -> pd.DataFrame:
-    prices = quotes[price].to_numpy()
+    prices = ohlcv[price].to_numpy()
     return pd.DataFrame(
         data={
             'wma': np.hstack((
@@ -72,7 +72,7 @@ def wma(
                 )(np.arange(period_length, prices.size))
             ))
         },
-        index=quotes.index
+        index=ohlcv.index
     )
 
 
@@ -80,13 +80,13 @@ def wma(
     verbose_name='Volume Weighted Moving Average'
 )
 def vwma(
-    quotes: pd.DataFrame,
-    period_length: int,
-    price: Literal['open', 'high', 'low', 'close'] = 'close'
+        ohlcv: pd.DataFrame,
+        period_length: int,
+        price: Literal['open', 'high', 'low', 'close'] = 'close'
 ) -> pd.DataFrame:
     return wma(
-        quotes, period_length,
-        price, quotes['volume']
+        ohlcv, period_length,
+        price, ohlcv['volume']
     ).rename(columns={'wma': 'vwma'})
 
 
@@ -100,15 +100,15 @@ def vwma(
     separate=True
 )
 def macd(
-    quotes: pd.DataFrame,
-    fast_period: int,
-    slow_period: int,
-    smoothing_period: int,
-    price: Literal['open', 'high', 'low', 'close'] = 'close',
-    macd_ma_type: Literal['sma', 'ema', 'vwma'] = 'sma',
-    signal_ma_type: Literal['sma', 'ema', 'vwma'] = 'sma'
+        ohlcv: pd.DataFrame,
+        fast_period: int,
+        slow_period: int,
+        smoothing_period: int,
+        price: Literal['open', 'high', 'low', 'close'] = 'close',
+        macd_ma_type: Literal['sma', 'ema', 'vwma'] = 'sma',
+        signal_ma_type: Literal['sma', 'ema', 'vwma'] = 'sma'
 ) -> pd.DataFrame:
-    result = quotes.assign(
+    result = ohlcv.assign(
         macd=lambda data: (
             getattr(
                 sys.modules[__name__], macd_ma_type
